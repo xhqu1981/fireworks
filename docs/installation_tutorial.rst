@@ -17,7 +17,7 @@ The FireWorks central server (FireServer) hosts the FireWorks database. For prod
 
 #. Start MongoDB::
 
-    mongod &
+    mongod --logpath <mongo.log> --fork
 
 You are now ready to start playing with FireWorks!
 
@@ -31,7 +31,7 @@ Reset the FireServer
     cd <INSTALL_DIR>/fw_tutorials/installation
 
    where <INSTALL_DIR> is your FireWorks installation directory.
- 
+
 #. Reset the FireWorks database (the LaunchPad)::
 
     lpad reset <TODAY'S DATE>
@@ -90,13 +90,13 @@ A Rocket fetches a FireWork from the LaunchPad and runs it. A Rocket might be ru
 1. We can launch Rockets using the Rocket Launcher. Execute the following command (once)::
 
     rlaunch singleshot
-    
+
    The Rocket fetches an available FireWork from the FireServer and runs it.
 
 #. Verify that the desired task ran::
 
     cat howdy.txt
-    
+
    You should see the text: ``howdy, your job launched successfully!``
 
 .. note:: In addition to ``howdy.txt``, you should also see a file called ``FW.json``. This contains a JSON representation of the FireWork that the Rocket ran and can be useful later for tracking down a launch or debugging.
@@ -104,7 +104,7 @@ A Rocket fetches a FireWork from the LaunchPad and runs it. A Rocket might be ru
 #. Check the status of your FireWork::
 
     lpad get_fw 1
-    
+
    You will now see lots of information about your Rocket launch, such as the time and directory of the launch. A lot of it is probably unclear, but you should notice that the state of the FireWork is now ``COMPLETED``.
 
 #. Try launching another rocket (you should get an error)::
