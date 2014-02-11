@@ -6,6 +6,7 @@ from multiprocessing.managers import BaseManager, DictProxy
 import string
 import sys
 import os
+import time
 import traceback
 import socket
 import multiprocessing
@@ -198,3 +199,109 @@ class NestedClassGetter(object):
 def explicit_serialize(o):
     o._fw_name = '{{%s.%s}}' % (o.__module__, o.__name__)
     return o
+    
+class Profiler(object):
+    """Simple performance profiler.
+
+    usage:
+        p = Profiler()
+        for thing in all_things:
+            p.set_event(thing)
+            p.begin("stage1")
+            do_stage_1()
+            p.end("stage1")
+            # alt. 'with' interface
+            with p.block("stage2"):
+                do_something_else()
+        p.write()
+
+    Note: instances are not thread-safe.
+    """
+    def __init__(self):
+        self.events = {}
+        self.key = None
+        self.event_keys = []
+        self.all_stages = []
+        self._cur_stage = None
+
+    def block(self, stage):
+        self._cur_stage = stage
+        return self
+
+    def __enter__(self):
+        self.begin(self._cur_stage)
+
+    def __exit__(self, type_, value, tb):
+        self.end(self._cur_stage)
+        self._cur_stage = None
+        return type_ is None  # re-raises exception, if there was one
+
+    def set_event(self, key):
+        self.event_keys.append(key)
+        self.key = key
+        self.events[key] = {}
+
+    def begin(self, stage):
+        ts = time.time()
+        self.events[self.key][stage] = [ts, -1]
+        self.all_stages.append(stage)
+
+    def end(self, stage):
+        ts = time.time()
+        self.events[self.key][stage][1] = ts
+
+    def _csv(self):
+        stages = ",".join(self.all_stages)
+        rows = ["event,{},_total".format(stages)]
+        for key in self.event_keys:
+            v = self.events[key]
+            durations = ["{:.3f}".format(v[s][1] - v[s][0]) for s in self.all_stages]
+            total = v[self.all_stages[-1]][1] - v[self.all_stages[0]][0]
+            durations.append("{:.3f}".format(total))
+            rows.append("{e},{d}".format(e=key, d=",".join(durations)))
+        return '\n'.join(rows)
+
+    def __str__(self):
+        return self._csv()
+
+    def write(self, stream=sys.stdout):
+        stream.write(str(self))
+        stream.write("\n")
+
+
+class NullProfiler(Profiler):
+    """Support performance profiler interface, but do absolutely nothing.
+    This is useful to avoid many tiresome blocks of the form
+
+        if profiling_is_enabled:
+            profiler.begin("foo")
+        do_foo()
+        if_profiling_is_enabled:
+            profiler.end("foo")
+
+    By, instead, doing the 'if/else' once:
+
+        profiler = Profiler() if profiling_is_enabled else NullProfiler()
+
+    Then, simply use the null object wherever you would use the real one.
+    """
+    def set_event(self, key):
+        pass
+
+    def begin(self, stage):
+        pass
+
+    def end(self, stage):
+        pass
+
+    def write(self, **kwargs):
+        pass
+
+    def block(self, stage):
+        return self
+
+    def __enter__(self):
+        pass
+
+    def __exit__(self, type_, value, tb):
+        return type_ is None  # re-raises exception, if there was one

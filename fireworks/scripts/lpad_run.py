@@ -25,6 +25,7 @@ from fireworks import __version__ as FW_VERSION
 from fireworks import FW_INSTALL_DIR
 from fireworks.user_objects.firetasks.script_task import ScriptTask
 from fireworks.utilities.fw_serializers import DATETIME_HANDLER, recursive_dict
+from fireworks.utilities.fw_utilities import Profiler, NullProfiler
 from six.moves import input
 
 
@@ -134,9 +135,14 @@ def add_wf(args):
             files.extend([os.path.join(f, i) for i in os.listdir(f)])
     else:
         files = args.wf_file
+    prof = Profiler() if args.pprof else NullProfiler()
     for f in files:
-        fwf = Workflow.from_file(f)
-        lp.add_wf(fwf)
+        prof.set_event(f)
+        with prof.block("parse"):
+            fwf = Workflow.from_file(f)
+        with prof.block("add"):
+            lp.add_wf(fwf)
+    prof.write()
 
 def add_wf_dir(args):
     lp = get_lp(args)
@@ -461,6 +467,8 @@ def lpad():
                               action="store_true",
                               help="Directory mode. Finds all files in the "
                                    "paths given by wf_file.")
+    addwf_parser.add_argument('-P', '--profile', action="store_true", dest="pprof",
+                              help="Add simple profiling to stdout")                                   
     addwf_parser.add_argument('wf_file', nargs="+",
                               help="Path to a FireWork or Workflow file")
     addwf_parser.set_defaults(func=add_wf)
