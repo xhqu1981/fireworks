@@ -19,6 +19,7 @@ from fireworks.utilities.fw_serializers import FWSerializable
 from fireworks.core.firework import FireWork, Launch, Workflow, FWAction, \
     Tracker
 from fireworks.utilities.fw_utilities import get_fw_logger
+from fireworks.utilities.profiling import get_profiler
 
 
 __author__ = 'Anubhav Jain'
@@ -165,7 +166,8 @@ class LaunchPad(FWSerializable):
 
         :param wf: a Workflow object.
         """
-
+        prof = get_profiler("LaunchPad.add_wf")
+        prof.begin("create")
         if isinstance(wf, FireWork):
             wf = Workflow.from_FireWork(wf)
 
@@ -179,11 +181,15 @@ class LaunchPad(FWSerializable):
         # make the first part query something that always returns False so we can use f&modify
         self.workflows.find_and_modify({'_id': -1}, wf.to_db_dict(), upsert=True)
 
+        prof.end("create")
+
         # refresh WF states, starting from all roots
+        self._prof = prof
         for fw_id in wf.root_fw_ids:
-            self._refresh_wf(wf, fw_id)
+             self._refresh_wf(wf, fw_id)
 
         self.m_logger.info('Added a workflow. id_map: {}'.format(old_new))
+        prof.write()
         return old_new
 
     def get_launch_by_id(self, launch_id):
@@ -706,17 +712,18 @@ class LaunchPad(FWSerializable):
         """
         # TODO: time how long it took to refresh the WF!
         # TODO: need a try-except here, high probability of failure if incorrect action supplied
-
-        updated_ids = wf.refresh(fw_id)
+        with self._prof.block("refresh_wf.refresh"):
+            updated_ids = wf.refresh(fw_id)
         self._upsert_wf(wf, updated_ids)
 
-
-    def _upsert_wf(self, wf, updated_ids):
-        updated_fws = [wf.id_fw[fid] for fid in updated_ids]
-        old_new = self._upsert_fws(updated_fws)
-        wf._reassign_ids(old_new)
+    def _upsert_wf(self, wf,  updated_ids):
+        with self._prof.block("upsert_wf.setup"):
+            updated_fws = [wf.id_fw[fid] for fid in updated_ids]
+            old_new = self._upsert_fws(updated_fws)
+            wf._reassign_ids(old_new)
         # redo the links - note that if you don't search across all keys, you can get errors
-        self.workflows.find_and_modify({'nodes': {'$in': list(wf.id_fw.keys())}}, wf.to_db_dict())
+        with self._prof.block("upsert_wf.find_and_modify"):
+            self.workflows.find_and_modify({'nodes': {'$in': list(wf.id_fw.keys())}}, wf.to_db_dict())
 
 
     def _steal_launches(self, thief_fw):
