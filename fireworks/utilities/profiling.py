@@ -139,9 +139,13 @@ class Profiler(object):
         return '\n'.join(rows)
 
     def __str__(self):
+        """Return results as CSV.
+        """
         return self._csv()
 
     def write(self, stream=sys.stdout):
+        """Write results (CSV) to a stream.
+        """
         stream.write(str(self))
         stream.write("\n")
 
