@@ -13,20 +13,9 @@ import threading
 from fireworks.benchmarks.bench import Benchmark, print_timings
 
 
-def warmup(bench, first):
-    # warmup
-    bench.log.info("warmup.start")
-    bench.load(bench.get_workflow(1, deps="sequence"))
-    if first:
-        print_timings({}, {'nwf': 0, 'ntasks': 0, 'type': ''},
-                      header=True)
-    bench.log.info("warmup.end")
-
-
 def load(bench, tasks, workflows, deps):
     for ntasks in range(*tasks):
         for nwf in range(*workflows):
-            warmup(bench, False)
             # run 'nwf' workflows with 'ntasks' tasks in each
             bench.log.info("load.start nwf={:d} ntasks={:d}"
                            .format(nwf, ntasks))
@@ -80,7 +69,8 @@ def main():
     bench = Benchmark(vb=vb)
     if args.reset:
         bench.reset()
-    warmup(bench, True)
+
+    print_timings({}, {'nwf': 0, 'ntasks': 0, 'type': ''}, header=True)
 
     if args.mode == "load":
         load(bench, args.tasks, args.workflows, args.type)
