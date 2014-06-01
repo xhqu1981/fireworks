@@ -6,59 +6,81 @@ __date__ = '5/30/14'
 
 # System
 import argparse
-import re
+import os
+import socket
+import sqlite3
 import sys
-import threading
+import time
 # Local
-from fireworks.benchmarks.bench import Benchmark, print_timings
+from fireworks.benchmarks.bench import Benchmark
+
+_client = None
 
 
-def load(bench, tasks, workflows, deps):
-    for ntasks in range(*tasks):
-        for nwf in range(*workflows):
-            # run 'nwf' workflows with 'ntasks' tasks in each
-            bench.log.info("load.start nwf={:d} ntasks={:d}"
-                           .format(nwf, ntasks))
-            tm = 0
-            for w in xrange(nwf):
-                tm += bench.load(bench.get_workflow(ntasks))
-            bench.log.info("load.end")
-            print_timings({'load': tm},
-                          {'nwf': nwf, 'ntasks': ntasks, 'type': deps})
+def get_client():
+    global _client
+    if _client is None:
+        _client = socket.getfqdn()
+        if 'PBS_JOBID' in os.environ:
+            _client += "-" + os.environ['PBS_JOBID']
+    return _client
 
 
-def run(bench, meta, np):
+def insert_result(db, action, tasks, workflows, deps, t0, t1):
+    cli = get_client()
+    db.execute("insert into runs values ('{}', {:d}, {:d}, 1, '{}',"
+               "'{}', {:.6f}, {:.6f})"
+               .format(action, tasks * workflows, tasks, deps, cli, t0, t1))
+    db.commit()
+
+
+def load(bench, tasks, workflows, deps, db):
+    bench.log.info("scaling.load.start tasks={:d} workflows={:d}"
+                   .format(tasks, workflows))
+    t0 = time.time()
+    # load 'workflows' workflows with 'tasks' tasks in each
+    for _ in xrange(workflows):
+        bench.load(bench.get_workflow(tasks))
+    t1 = time.time()
+    insert_result(db, 'load', tasks, workflows, deps, t0, t1)
+    bench.log.info("scaling.load.end")
+
+
+def run(bench, tasks, workflows, deps, np, db):
     bench.log.info("scaling.run.start")
-    tm = bench.run(np)
+    t0 = time.time()
+    t1 = t0 + bench.run(np)
+    insert_result(db, 'run', tasks, workflows, deps, t0, t1)
     bench.log.info("scaling.run.end")
-    print_timings({'run': tm}, meta)
 
 
-def irange(v):
-    m = re.match("(\d+)(?::(\d+):(\d+))?", v)
-    if m is None:
-        raise ValueError("Bad range min:max:step in '{}'".format(v))
-    g = m.groups()
-    if g[1] is None:
-        return int(g[0]), int(g[0]) + 1, 1
-    else:
-        return int(g[0]), int(g[1]) + 1, int(g[2])
+# def irange(v):
+#     m = re.match("(\d+)(?::(\d+):(\d+))?", v)
+#     if m is None:
+#         raise ValueError("Bad range min:max:step in '{}'".format(v))
+#     g = m.groups()
+#     if g[1] is None:
+#         return int(g[0]), int(g[0]) + 1, 1
+#     else:
+#         return int(g[0]), int(g[1]) + 1, int(g[2])
 
 
 def main():
     ap = argparse.ArgumentParser("Load or run workflows")
     ap.add_argument("--mode", dest="mode", default="load",
                     help="Mode: load, run")
-    ap.add_argument("--tasks", dest="tasks", type=irange, default='1',
-                    help="Number of tasks")
+    ap.add_argument("--tasks", dest="tasks", type=int, default='1',
+                    help="Number of tasks per workflow")
     ap.add_argument("--type", dest="type", default="sequence",
                     help="Workflow type (sequence, reduce, complex)")
-    ap.add_argument("--workflows", dest="workflows", type=irange, default='1',
+    ap.add_argument("--workflows", dest="workflows", type=int, default='1',
                     help="Number of workflows")
     ap.add_argument("--reset", dest="reset", action="store_true",
                     help="Reset the FireWorks DB before starting")
     ap.add_argument("--np", dest="np", type=int, default=1,
                     help="Parallelism, for 'run' mode only")
+    ap.add_argument("--rfile", dest="rfile", default="/tmp/benchmarks.sqlite",
+                    help="Results SQLite file (%(default)s)")
     ap.add_argument("-v", "--verbose", dest="vb", action="count", default=0,
                     help="Increase log level to INFO, then DEBUG")
     ap.add_argument("-q", "--quiet", dest="quiet", action="store_true",
@@ -70,14 +92,17 @@ def main():
     if args.reset:
         bench.reset()
 
-    print_timings({}, {'nwf': 0, 'ntasks': 0, 'type': ''}, header=True)
+    db = sqlite3.connect(args.rfile)
+    db.execute("""CREATE TABLE IF NOT EXISTS
+               runs (mode char(4), tasks integer,
+               wftasks integer, clients integer, wftype char(7),
+               client char(32), start double, end double)""")
+    db.commit()
 
     if args.mode == "load":
-        load(bench, args.tasks, args.workflows, args.type)
+        load(bench, args.tasks, args.workflows, args.type, db)
     elif args.mode == "run":
-        max_wf, max_tasks = args.workflows[1] - 1, args.tasks[1] - 1
-        meta = {'nwf': max_wf, 'ntasks': max_tasks, 'type': args.type}
-        run(bench, meta, args.np)
+        run(bench, args.tasks, args.workflows, args.type, args.np, db)
     else:
         ap.error("Bad mode '{}' not load or run".format(args.mode))
 
@@ -86,7 +111,6 @@ def main():
     bench.log.info("scaling.cleanup.end")
 
     return 0
-
 
 
 if __name__ == '__main__':
