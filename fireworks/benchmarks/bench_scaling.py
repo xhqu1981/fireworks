@@ -26,11 +26,27 @@ def get_client():
     return _client
 
 
+def init_results(filename):
+    """Create and return result DB connection.
+    """
+    db = sqlite3.connect(filename)
+    db.execute("""CREATE TABLE IF NOT EXISTS
+               runs (mode char(4), tasks integer,
+               wftasks integer, clients integer, wftype char(7),
+               client char(32),
+               start double, end double, dur double)""")
+    db.commit()
+    return db
+
+
 def insert_result(db, action, tasks, workflows, deps, t0, t1):
+    """Insert one result into DB.
+    """
     cli = get_client()
     db.execute("insert into runs values ('{}', {:d}, {:d}, {:d}, '{}',"
-               "'{}', {:.6f}, {:.6f})"
-               .format(action, tasks * workflows, tasks, nodes, deps, cli, t0, t1))
+               "'{}', {:.6f}, {:.6f}, {:.6f})"
+               .format(action, tasks * workflows, tasks, nodes, deps, cli, 
+	               t0, t1, t1 - t0))
     db.commit()
 
 
@@ -52,17 +68,6 @@ def run(bench, tasks, workflows, deps, np, db):
     t1 = t0 + bench.run(np)
     insert_result(db, 'run', tasks, workflows, deps, t0, t1)
     bench.log.info("scaling.run.end")
-
-
-# def irange(v):
-#     m = re.match("(\d+)(?::(\d+):(\d+))?", v)
-#     if m is None:
-#         raise ValueError("Bad range min:max:step in '{}'".format(v))
-#     g = m.groups()
-#     if g[1] is None:
-#         return int(g[0]), int(g[0]) + 1, 1
-#     else:
-#         return int(g[0]), int(g[1]) + 1, int(g[2])
 
 
 def main():
@@ -95,12 +100,7 @@ def main():
     if args.reset:
         bench.reset()
 
-    db = sqlite3.connect(args.rfile)
-    db.execute("""CREATE TABLE IF NOT EXISTS
-               runs (mode char(4), tasks integer,
-               wftasks integer, clients integer, wftype char(7),
-               client char(32), start double, end double)""")
-    db.commit()
+    db = init_results(args.rfile)
 
     nodes = args.np * args.clients
 
