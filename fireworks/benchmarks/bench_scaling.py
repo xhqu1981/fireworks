@@ -73,6 +73,7 @@ def run(bench, tasks, workflows, deps, np, db):
 def main():
     global nodes
 
+    # Parse command-line.
     ap = argparse.ArgumentParser("Load or run workflows")
     ap.add_argument("--mode", dest="mode", default="load",
                     help="Mode: load, run")
@@ -94,16 +95,30 @@ def main():
     ap.add_argument("-q", "--quiet", dest="quiet", action="store_true",
                     help="Turn off log messages")
     args = ap.parse_args()
+
+    # Set verbosity.
     vb = -1 if args.quiet else min(args.vb, 2)
 
-    bench = Benchmark(vb=vb)
+    # Set working directory.
+    working_dir = os.path.join(os.getcwd(), get_client())
+    if not os.path.exists(working_dir):
+        os.mkdir(working_dir)
+    bench = Benchmark(vb=vb, basedir=working_dir)
     if args.reset:
         bench.reset()
 
-    db = init_results(args.rfile)
+    # Create results database.
+    # - adjust results db-file to working dir, if relative
+    if not os.path.isabs(args.rfile):
+        results_file = os.path.join(working_dir, args.rfile)
+    else:
+        results_file = args.rfile
+    # - initialize sqlite DB to use the file
+    db = init_results(results_file)
 
     nodes = args.np * args.clients
 
+    # Run the load or run command.
     if args.mode == "load":
         load(bench, args.tasks, args.workflows, args.type, db)
     elif args.mode == "run":
@@ -111,8 +126,12 @@ def main():
     else:
         ap.error("Bad mode '{}' not load or run".format(args.mode))
 
+    # Cleanup.
     bench.log.info("scaling.cleanup.start")
-    bench.cleanup()
+    try:
+        bench.cleanup()
+    except:
+        pass
     bench.log.info("scaling.cleanup.end")
 
     return 0
