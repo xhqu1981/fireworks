@@ -70,9 +70,14 @@ class Benchmark(object):
         logging.Formatter("(%(name)s) %(levelname)s - %(message)s"))
     log.addHandler(_hnd)
 
-    def __init__(self, vb=0):
-        # remember initial dir (FireWorks does chdir)
-        self._pdir = os.getcwd()
+    def __init__(self, vb=0, basedir=None):
+        self.log.info("Create Benchmark instance. basedir={}".format(basedir))
+        # chdir & remember initial dir (FireWorks does chdir)
+        if basedir is None:
+            self._pdir = os.getcwd()
+        else:
+            os.chdir(basedir)
+            self._pdir = basedir
         if vb < 0 or 'FW_BENCH_QUIET' in os.environ:
             lvl = logging.CRITICAL
         elif vb > 1 or 'FW_BENCH_DEBUG' in os.environ:
