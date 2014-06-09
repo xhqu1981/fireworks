@@ -16,6 +16,7 @@ from fireworks.benchmarks.bench import Benchmark
 
 _client = None
 nodes = 1
+_id = None
 
 def get_client():
     global _client
@@ -31,7 +32,8 @@ def init_results(filename):
     """
     db = sqlite3.connect(filename)
     db.execute("""CREATE TABLE IF NOT EXISTS
-               runs (mode char(4), tasks integer,
+               runs (mode char(4), runid char(32),
+               tasks integer,
                wftasks integer, clients integer, wftype char(7),
                client char(32),
                start double, end double, dur double)""")
@@ -43,9 +45,9 @@ def insert_result(db, action, tasks, workflows, deps, t0, t1):
     """Insert one result into DB.
     """
     cli = get_client()
-    db.execute("insert into runs values ('{}', {:d}, {:d}, {:d}, '{}',"
+    db.execute("insert into runs values ('{}', '{}', {:d}, {:d}, {:d}, '{}',"
                "'{}', {:.6f}, {:.6f}, {:.6f})"
-               .format(action, tasks * workflows, tasks, nodes, deps, cli, 
+               .format(action, _id, tasks * workflows, tasks, nodes, deps, cli, 
 	               t0, t1, t1 - t0))
     db.commit()
 
@@ -71,7 +73,7 @@ def run(bench, tasks, workflows, deps, np, db):
 
 
 def main():
-    global nodes
+    global nodes, _id
 
     # Parse command-line.
     ap = argparse.ArgumentParser("Load or run workflows")
@@ -88,6 +90,8 @@ def main():
     ap.add_argument("--np", dest="np", type=int, default=1,
                     help="Parallelism, for 'run' mode only")
     ap.add_argument("--clients", dest="clients", type=int, default=1)
+    ap.add_argument("--run", dest="rnum", type=int, default=1, help="Run number (1)")
+    ap.add_argument("--id", dest="ident", default="", help="Run id ('')")
     ap.add_argument("--rfile", dest="rfile", default="/tmp/benchmarks.sqlite",
                     help="Results SQLite file (%(default)s)")
     ap.add_argument("-v", "--verbose", dest="vb", action="count", default=0,
@@ -116,6 +120,8 @@ def main():
     # - initialize sqlite DB to use the file
     db = init_results(results_file)
 
+    # Set some global vars (gasp!)
+    _id = args.ident + "{:d}".format(args.rnum)
     nodes = args.np * args.clients
 
     # Run the load or run command.
