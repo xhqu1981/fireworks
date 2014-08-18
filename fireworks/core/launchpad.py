@@ -260,9 +260,11 @@ class LaunchPad(FWSerializable):
         :param fw_id: FireWork id (int)
         :return: FireWork object
         """
+        m_timer.start("get_fw_by_id")
         fw_dict = self.fireworks.find_one({'fw_id': fw_id})
 
         if not fw_dict:
+            m_timer.stop("get_fw_by_id")
             raise ValueError('No FireWork exists with id: {}'.format(fw_id))
             # recreate launches from the launch collection
 
@@ -271,6 +273,8 @@ class LaunchPad(FWSerializable):
 
         fw_dict['archived_launches'] = list(self.launches.find(
                     {'launch_id': {"$in": fw_dict['archived_launches']}}))
+
+        m_timer.stop("get_fw_by_id")
 
         return FireWork.from_dict(fw_dict)
 
@@ -384,14 +388,17 @@ class LaunchPad(FWSerializable):
         :param limit: (int) limit the results
         :param count_only: (bool) only return the count rather than explicit ids
         """
+        m_timer.start("get_fw_ids")
         fw_ids = []
         criteria = query if query else {}
 
         if count_only:
+            m_timer.stop("get_fw_ids")
             return self.fireworks.find(criteria, {"fw_id": True}, sort=sort).limit(limit).count()
 
         for fw in self.fireworks.find(criteria, {"fw_id": True}, sort=sort).limit(limit):
             fw_ids.append(fw["fw_id"])
+        m_timer.stop("get_fw_ids")
         return fw_ids
 
     def get_wf_ids(self, query=None, sort=None, limit=0, count_only=False):
@@ -402,14 +409,17 @@ class LaunchPad(FWSerializable):
         :param limit: (int) limit the results
         :param count_only: (bool) only return the count rather than explicit ids
         """
+        m_timer.start("get_wf_ids")
         wf_ids = []
         criteria = query if query else {}
         if count_only:
+            m_timer.stop("get_wf_ids")
             return self.workflows.find(criteria, {"nodes": True}, sort=sort).limit(limit).count()
 
         for fw in self.workflows.find(criteria, {"nodes": True}, sort=sort).limit(limit):
             wf_ids.append(fw["nodes"][0])
 
+        m_timer.stop("get_wf_ids")
         return wf_ids
 
     def run_exists(self, fworker=None):
@@ -529,6 +539,7 @@ class LaunchPad(FWSerializable):
         return False
 
     def _get_a_fw_to_run(self, query=None, fw_id=None, checkout=True):
+        m_timer.start("_get_a_fw_to_run")
         m_query = dict(query) if query else {}  # make a defensive copy
         m_query['state'] = 'READY'
 
@@ -556,10 +567,12 @@ class LaunchPad(FWSerializable):
                                                sort=sortby)
 
             if not m_fw:
+                m_timer.stop("_get_a_fw_to_run")
                 return None
 
             m_fw = self.get_fw_by_id(m_fw['fw_id'])
             if self._check_fw_for_uniqueness(m_fw):
+                m_timer.stop("_get_a_fw_to_run")
                 return m_fw
 
     def reserve_fw(self, fworker, launch_dir, host=None, ip=None):

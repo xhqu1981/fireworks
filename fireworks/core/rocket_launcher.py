@@ -10,6 +10,7 @@ from fireworks.fw_config import RAPIDFIRE_SLEEP_SECS
 from fireworks.core.fworker import FWorker
 from fireworks.core.rocket import Rocket
 from fireworks.utilities.fw_utilities import get_fw_logger, create_datestamp_dir, log_multi
+from fireworks.utilities import timing
 
 __author__ = 'Anubhav Jain'
 __copyright__ = 'Copyright 2013, The Materials Project'
@@ -17,6 +18,9 @@ __version__ = '0.1'
 __maintainer__ = 'Anubhav Jain'
 __email__ = 'ajain@lbl.gov'
 __date__ = 'Feb 22, 2013'
+
+
+m_timer = timing.get_fw_timer("rocket_launcher")
 
 
 def launch_rocket(launchpad, fworker=None, fw_id=None, strm_lvl='INFO'):
@@ -51,6 +55,7 @@ def rapidfire(launchpad, fworker=None, m_dir=None, nlaunches=0, max_loops=-1, sl
     :param sleep_time: (int) secs to sleep between rapidfire loop iterations
     :param strm_lvl: (str) level at which to output logs to stdout
     """
+    m_timer.start("rapidfire")
 
     sleep_time = sleep_time if sleep_time else RAPIDFIRE_SLEEP_SECS
     curdir = m_dir if m_dir else os.getcwd()
@@ -82,3 +87,5 @@ def rapidfire(launchpad, fworker=None, m_dir=None, nlaunches=0, max_loops=-1, sl
         time.sleep(sleep_time)
         num_loops += 1
         log_multi(l_logger, 'Checking for FWs to run...'.format(sleep_time))
+
+    m_timer.stop("rapidfire")

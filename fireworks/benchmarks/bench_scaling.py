@@ -13,7 +13,7 @@ import sys
 import time
 # Local
 from fireworks.benchmarks.bench import Benchmark
-
+from fireworks.utilities import timing
 _client = None
 nodes = 1
 _id = None
@@ -139,6 +139,11 @@ def main():
     except:
         pass
     bench.log.info("scaling.cleanup.end")
+
+    # Print out timers if any
+    if timing.any_fw_timers():
+        print("Timers\n-------")
+        timing.print_fw_timers()
 
     return 0
 

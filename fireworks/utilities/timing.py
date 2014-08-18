@@ -12,6 +12,11 @@ import time
 
 #: Environment variable in which to list the enabled timers
 #: Use comma-separated strings, e.g.:
+#: $ export FW_TIMERS="LaunchPad"
+#: Glob-style expressions are also supported, e.g. to match
+#: all timers:
+#: $ export FW_TIMERS="*"
+
 timer_env_var = "FW_TIMERS"
 
 # Module vars
