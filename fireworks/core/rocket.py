@@ -13,6 +13,7 @@ import threading
 from fireworks.core.firework import FWAction, FireWork
 from fireworks.fw_config import FWData, PING_TIME_SECS, REMOVE_USELESS_DIRS, PRINT_FW_JSON, PRINT_FW_YAML, STORE_PACKING_INFO
 from fireworks.utilities.dict_mods import apply_mod
+from fireworks.utilities import timing
 
 __author__ = 'Anubhav Jain'
 __copyright__ = 'Copyright 2013, The Materials Project'
@@ -20,6 +21,8 @@ __version__ = '0.1'
 __maintainer__ = 'Anubhav Jain'
 __email__ = 'ajain@lbl.gov'
 __date__ = 'Feb 7, 2013'
+
+m_timer = timing.get_fw_timer(__name__)
 
 def do_ping(launchpad, launch_id):
     if launchpad:
@@ -100,6 +103,8 @@ class Rocket():
         """
         Run the rocket (check out a job from the database and execute it)
         """
+        m_timer.start("run")
+
         all_stored_data = {}  # combined stored data for *all* the Tasks
         all_update_spec = {}  # combined update_spec for *all* the Tasks
         all_mod_spec = []  # combined mod_spec for *all* the Tasks
@@ -108,6 +113,7 @@ class Rocket():
         launch_dir = os.path.abspath(os.getcwd())
 
         # check a FW job out of the launchpad
+        m_timer.start("get_job")
         if lp:
             m_fw, launch_id = lp.checkout_fw(self.fworker, launch_dir, self.fw_id)
         else:  # offline mode
@@ -122,6 +128,7 @@ class Rocket():
                 f.truncate()
 
             launch_id = None  # we don't need this in offline mode...
+        m_timer.stop("get_job")
 
         if not m_fw:
             print("No FireWorks are ready to run and match query! {}".format(self.fworker.query))

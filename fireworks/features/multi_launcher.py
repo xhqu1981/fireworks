@@ -9,7 +9,7 @@ import time
 from fireworks.fw_config import FWData, PING_TIME_SECS, DS_PASSWORD
 from fireworks.core.rocket_launcher import rapidfire
 from fireworks.utilities.fw_utilities import DataServer
-
+from fireworks.utilities import timing
 
 __author__ = 'Xiaohui Qu, Anubhav Jain'
 __copyright__ = 'Copyright 2013, The Material Project & The Electrolyte Genome Project'
@@ -17,6 +17,8 @@ __version__ = '0.1'
 __maintainer__ = 'Xiaohui Qu'
 __email__ = 'xqu@lbl.gov'
 __date__ = 'Aug 19, 2013'
+
+m_timer = timing.get_fw_timer("multi_launcher")
 
 
 def ping_multilaunch(port, stop_event):
@@ -56,6 +58,7 @@ def rapidfire_process(fworker, nlaunches, sleep, loglvl, port, node_list, sub_np
     :param node_list: ([str]) computer node list
     :param sub_nproc: (int) number of processors of the sub job
     """
+    m_timer.start("rapidfire_process")
     ds = DataServer(address=('127.0.0.1', port), authkey=DS_PASSWORD)
     ds.connect()
     launchpad = ds.LaunchPad()
@@ -64,6 +67,7 @@ def rapidfire_process(fworker, nlaunches, sleep, loglvl, port, node_list, sub_np
     FWData().NODE_LIST = node_list
     FWData().SUB_NPROCS = sub_nproc
     rapidfire(launchpad, fworker, None, nlaunches, -1, sleep, loglvl)
+    m_timer.stop("rapidfire_process")
 
 
 def start_rockets(fworker, nlaunches, sleep, loglvl, port, node_lists, sub_nproc_list):
@@ -124,6 +128,8 @@ def launch_multiprocess(launchpad, fworker, loglvl, nlaunches, num_jobs, sleep_t
     :param total_node_list: ([str]) contents of NODEFILE (doesn't affect execution)
     :param ppn: (int) processors per node (doesn't affect execution)
     """
+    m_timer.start("launch_multiprocess")
+
     # parse node file contents
     node_lists, sub_nproc_list = split_node_lists(num_jobs, total_node_list, ppn)
 
@@ -146,3 +152,5 @@ def launch_multiprocess(launchpad, fworker, loglvl, nlaunches, num_jobs, sleep_t
     ping_stop.set()
     ping_thread.join()
     ds.shutdown()
+
+    m_timer.stop("launch_multiprocess")

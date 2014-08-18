@@ -30,28 +30,6 @@ if not path in fw_config.USER_PACKAGES:
     fw_config.USER_PACKAGES.append(path)
 
 
-# def print_timings(tm, meta, header=False, strm=None):
-#     """Print timings in 'tm', along with metadata in 'meta', as CSV.
-#
-#     Both 'tm' and 'meta' are dictionaries. One row will be written for
-#     each key in 'tm', with the name set to the key and the timing set to
-#     the (numeric) value. The key/value pairs from 'meta' will
-#     be included as additional columns whose values are repeated for each row.
-#
-#     If 'header' is True, then the CSV header will be printed first.
-#
-#     Output will go to 'strm' if given, otherwise stdout.
-#     """
-#     f = strm or sys.stdout
-#     w = csv.DictWriter(f, ["name", "tm_sec"] + meta.keys())
-#     if header:
-#         w.writeheader()
-#     d = meta.copy()
-#     for name, sec in tm.iteritems():
-#         d.update({"name": name, "tm_sec": sec})
-#         w.writerow(d)
-
-
 class BenchmarkTask(FireTaskBase):
     _fw_name = "Benchmark Task"
 
