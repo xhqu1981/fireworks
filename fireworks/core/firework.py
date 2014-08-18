@@ -31,7 +31,6 @@ from fireworks.utilities.fw_serializers import FWSerializable, \
     recursive_serialize, recursive_deserialize, serialize_fw
 from fireworks.utilities.fw_utilities import get_my_host, get_my_ip, \
     NestedClassGetter
-from fireworks.utilities.timing import get_fw_timer
 
 
 __author__ = "Anubhav Jain"
@@ -105,7 +104,7 @@ class FireTaskBase(defaultdict, FWSerializable):
         return cls(m_dict)
 
     def __repr__(self):
-        return '<{}>:{}'.format(self._fw_name, dict(self))
+        return '<{}>:{}'.format(self.fw_name, dict(self))
 
 
 class FWAction(FWSerializable):
@@ -183,8 +182,8 @@ class FireWork(FWSerializable):
     A FireWork is a workflow step and might be contain several FireTasks
     """
 
-    STATE_RANKS = {'ARCHIVED': -1, 'DEFUSED': 0, 'WAITING': 1, 'READY': 2,
-                   'RESERVED': 3, 'FIZZLED': 4, 'RUNNING': 5, 'COMPLETED': 7}
+    STATE_RANKS = {'ARCHIVED': -2, 'FIZZLED': -1, 'DEFUSED': 0, 'WAITING': 1, 'READY': 2,
+                   'RESERVED': 3, 'RUNNING': 4, 'COMPLETED': 5}
 
     def __init__(self, tasks, spec=None, name=None, launches=None,
                  archived_launches=None, state='WAITING', created_on=None,
@@ -346,7 +345,6 @@ class Launch(FWSerializable, object):
     A Launch encapsulates data about a specific run of a FireWork on a
     computing resource
     """
-    _tm = get_fw_timer("Launch")
 
     def __init__(self, state, launch_dir, fworker=None, host=None, ip=None,
                  trackers=None, action=None, state_history=None,
@@ -372,10 +370,8 @@ class Launch(FWSerializable, object):
 
         self.launch_dir = launch_dir
         self.fworker = fworker or FWorker()
-        self._tm.start("get_addr")
         self.host = host or get_my_host()
         self.ip = ip or get_my_ip()
-        self._tm.stop("get_addr")
         self.trackers = trackers if trackers else []
         self.action = action if action else None
         self.state_history = state_history if state_history else []
@@ -828,8 +824,8 @@ class Workflow(FWSerializable):
         else:
             # my state depends on launch whose state has the highest 'score'
             # in STATE_RANKS
-            max_score = 0
-            m_state = 'READY'
+            m_state = 'READY' if len(fw.launches) == 0 else 'FIZZLED'
+            max_score = FireWork.STATE_RANKS[m_state]
             m_action = None
 
             # TODO: pick the first launch in terms of end date that matches
