@@ -21,6 +21,7 @@ from fireworks.utilities.fw_serializers import FWSerializable
 from fireworks.core.firework import FireWork, Launch, Workflow, FWAction, \
     Tracker
 from fireworks.utilities.fw_utilities import get_fw_logger
+from fireworks.utilities import timing
 
 
 __author__ = 'Anubhav Jain'
@@ -30,7 +31,7 @@ __maintainer__ = 'Anubhav Jain'
 __email__ = 'ajain@lbl.gov'
 __date__ = 'Jan 30, 2013'
 
-
+m_timer = timing.get_fw_timer("launchpad")
 # TODO: lots of duplication reduction and cleanup possible
 
 class WFLock(object):
