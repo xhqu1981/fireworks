@@ -96,12 +96,18 @@ def main():
                     help="Results SQLite file (%(default)s)")
     ap.add_argument("-v", "--verbose", dest="vb", action="count", default=0,
                     help="Increase log level to INFO, then DEBUG")
+    ap.add_argument("-t", "--trace", dest="trace", action="store_true",
+                    help="Turn on tracing output to stderr")
     ap.add_argument("-q", "--quiet", dest="quiet", action="store_true",
                     help="Turn off log messages")
     args = ap.parse_args()
 
     # Set verbosity.
     vb = -1 if args.quiet else min(args.vb, 2)
+
+    # Turn on tracing if requested
+    if args.trace:
+        timing.Timer.set_trace(True, stream=sys.stderr)
 
     # Set working directory.
     working_dir = os.path.join(os.getcwd(), get_client())

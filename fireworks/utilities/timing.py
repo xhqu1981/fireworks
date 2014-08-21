@@ -5,7 +5,9 @@ The model is that timers have names, and within timers
 are multiple named "stages".
 """
 
+from datetime import datetime
 import fnmatch
+from math import floor
 import os
 import sys
 import time
@@ -139,6 +141,7 @@ class Timer(object):
     """
 
     _ns = None
+    _trace_out = None
 
     def __init__(self, name):
         self.name = name
@@ -162,7 +165,17 @@ class Timer(object):
         """
         cls._ns = val
 
+    @classmethod
+    def set_trace(cls, enabled, stream=sys.stdout):
+        """Enable/disable 'trace' mode, where every event
+        is also printed.
+        """
+        cls._trace_out = (None, stream)[enabled]
+
     def block(self, stage):
+        """Set stage name for a block and return `self`, for use
+        in a 'with' statement.
+        """
         self._cur_stage = stage
         return self
 
@@ -173,20 +186,32 @@ class Timer(object):
         self.stop(self._cur_stage)
         return type_ is None  # not an exception
 
+    @staticmethod
+    def _get_tmstr(tm):
+        return datetime.fromtimestamp(tm).strftime("%Y-%m-%dT%H:%M:%S") + \
+            ".{:06d}".format(int((tm - floor(tm)) * 1000000))
+
     def start(self, stage="null"):
         """Begin timing.
         """
-        tm = self._stage_times.get(stage, 0)
-        self._stage_times[stage] = tm - time.time()
+        now, tm = time.time(), self._stage_times.get(stage, 0)
+        self._stage_times[stage] = tm - now
         self._stage_active.add(stage)
+        if self._trace_out:
+            self._trace_out.write("{} {:.6f} {}.begin\n"
+                                  .format(self._get_tmstr(now), now, stage))
 
     def stop(self, stage="null"):
         """Stop timing.
         """
-        self._stage_times[stage] += time.time()
+        now = time.time()
+        self._stage_times[stage] += now
         count = self._stage_counts.get(stage, 0)
         self._stage_counts[stage] = count + 1
         self._stage_active.remove(stage)
+        if self._trace_out:
+            self._trace_out.write("{} {:.6f} {}.end\n"
+                                  .format(self._get_tmstr(now), now, stage))
 
     def stop_all(self):
         """Stop all timers.
