@@ -191,17 +191,23 @@ class Timer(object):
         return datetime.fromtimestamp(tm).strftime("%Y-%m-%dT%H:%M:%S") + \
             ".{:06d}".format(int((tm - floor(tm)) * 1000000))
 
-    def start(self, stage="null"):
+    @staticmethod
+    def _kvp(kwargs):
+        return ' '.join(['{}={}'.format(k, v)
+                        for k, v in kwargs.iteritems()])
+
+    def start(self, stage="null", **kwargs):
         """Begin timing.
         """
         now, tm = time.time(), self._stage_times.get(stage, 0)
         self._stage_times[stage] = tm - now
         self._stage_active.add(stage)
         if self._trace_out:
-            self._trace_out.write("{} {:.6f} {}.begin\n"
-                                  .format(self._get_tmstr(now), now, stage))
+            ex = ' ' + self._kvp(kwargs) if kwargs else ''
+            self._trace_out.write("{} {:.6f} {}.begin{}\n"
+                                  .format(self._get_tmstr(now), now, stage, ex))
 
-    def stop(self, stage="null"):
+    def stop(self, stage="null", **kwargs):
         """Stop timing.
         """
         now = time.time()
@@ -210,8 +216,9 @@ class Timer(object):
         self._stage_counts[stage] = count + 1
         self._stage_active.remove(stage)
         if self._trace_out:
-            self._trace_out.write("{} {:.6f} {}.end\n"
-                                  .format(self._get_tmstr(now), now, stage))
+            ex = ' ' + self._kvp(kwargs) if kwargs else ''
+            self._trace_out.write("{} {:.6f} {}.end{}\n"
+                                  .format(self._get_tmstr(now), now, stage, ex))
 
     def stop_all(self):
         """Stop all timers.

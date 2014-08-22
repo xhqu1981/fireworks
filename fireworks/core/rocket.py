@@ -103,7 +103,8 @@ class Rocket():
         """
         Run the rocket (check out a job from the database and execute it)
         """
-        m_timer.start("run")
+        ids = {'rocket_id': id(self)}
+        m_timer.start("run", **ids)
 
         all_stored_data = {}  # combined stored data for *all* the Tasks
         all_update_spec = {}  # combined update_spec for *all* the Tasks
@@ -113,7 +114,7 @@ class Rocket():
         launch_dir = os.path.abspath(os.getcwd())
 
         # check a FW job out of the launchpad
-        m_timer.start("get_job")
+        m_timer.start("rocket.run", **ids)
         if lp:
             m_fw, launch_id = lp.checkout_fw(self.fworker, launch_dir, self.fw_id)
         else:  # offline mode
@@ -128,7 +129,8 @@ class Rocket():
                 f.truncate()
 
             launch_id = None  # we don't need this in offline mode...
-        m_timer.stop("get_job")
+        m_timer.stop("rocket.run", **ids)
+        ids['launch_id'] = str(launch_id)
 
         if not m_fw:
             print("No FireWorks are ready to run and match query! {}".format(self.fworker.query))
@@ -174,6 +176,8 @@ class Rocket():
 
             # execute the FireTasks!
             for t in m_fw.tasks:
+                ids['task_id'] = id(t)
+                m_timer.start("rocket.run.fw_task", **ids)
                 lp.log_message(logging.INFO, "Task started: %s." % t.fw_name)
                 m_action = t.run_task(my_spec)
 
@@ -195,7 +199,9 @@ class Rocket():
                 my_spec.update(m_action.update_spec)
                 for mod in m_action.mod_spec:
                     apply_mod(mod, my_spec)
+                m_timer.stop("rocket.run.fw_task", **ids)
                 lp.log_message(logging.INFO, "Task completed: %s " % t.fw_name)
+
                 if m_action.skip_remaining_tasks:
                     break
 
@@ -231,6 +237,7 @@ class Rocket():
                     f.write(json.dumps(d))
                     f.truncate()
 
+            m_timer.stop("run", **ids)
             return True
 
         except:
@@ -255,4 +262,5 @@ class Rocket():
 
             return True
 
+        m_timer.stop("run", **ids)
 

@@ -31,7 +31,7 @@ from fireworks.utilities.fw_serializers import FWSerializable, \
     recursive_serialize, recursive_deserialize, serialize_fw
 from fireworks.utilities.fw_utilities import get_my_host, get_my_ip, \
     NestedClassGetter
-
+from fireworks.utilities import timing
 
 __author__ = "Anubhav Jain"
 __credits__ = "Shyue Ping Ong"
@@ -41,6 +41,7 @@ __maintainer__ = "Anubhav Jain"
 __email__ = "ajain@lbl.gov"
 __date__ = "Feb 5, 2013"
 
+m_timer = timing.get_fw_timer("firework")
 
 @add_metaclass(abc.ABCMeta)
 class FireTaskMeta(type):
@@ -274,6 +275,7 @@ class FireWork(FWSerializable):
     @classmethod
     @recursive_deserialize
     def from_dict(cls, m_dict):
+        m_timer.start("Firework.from_dict")
         tasks = m_dict['spec']['_tasks']
         launches = [Launch.from_dict(tmp) for tmp in m_dict.get('launches', [])]
         archived_launches = [Launch.from_dict(tmp) for tmp in
@@ -283,8 +285,12 @@ class FireWork(FWSerializable):
         created_on = m_dict.get('created_on', None)
         name = m_dict.get('name', None)
 
-        return FireWork(tasks, m_dict['spec'], name, launches, archived_launches,
-                        state, created_on, fw_id)
+        fw = FireWork(tasks, m_dict['spec'], name, launches, archived_launches,
+                      state, created_on, fw_id)
+
+        m_timer.stop("Firework.from_dict")
+
+        return fw
 
     def __str__(self):
         return 'FireWork object: (id: %i , name: %s)' % (self.fw_id, self.fw_name)
@@ -798,7 +804,7 @@ class Workflow(FWSerializable):
         :param updated_ids: ([int])
         :return: ([int]) list of FireWork ids that were updated
         """
-
+        m_timer.start("Workflow.refresh", fw_id=fw_id)
         updated_ids = updated_ids if updated_ids else set()  # these are the
         # fw_ids to re-enter into the database
 
@@ -807,6 +813,7 @@ class Workflow(FWSerializable):
 
         # if we're defused or archived, just skip altogether
         if fw.state == 'DEFUSED' or fw.state == 'ARCHIVED':
+            m_timer.stop("Workflow.refresh", fw_id=fw_id)
             return updated_ids
 
         # what are the parent states?
@@ -860,6 +867,8 @@ class Workflow(FWSerializable):
                     self.refresh(child_id, updated_ids))
 
         self.updated_on = datetime.utcnow()
+
+        m_timer.stop("Workflow.refresh", fw_id=fw_id)
 
         return updated_ids
 

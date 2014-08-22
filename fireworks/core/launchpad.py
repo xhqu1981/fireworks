@@ -279,17 +279,31 @@ class LaunchPad(FWSerializable):
 
         return FireWork.from_dict(fw_dict)
 
+    def create_fw_from_dict(self, fw_dict):
+        fw_dict['launches'] = list(self.launches.find(
+            {'launch_id': {"$in": fw_dict['launches']}}))
+
+        fw_dict['archived_launches'] = list(self.launches.find(
+            {'launch_id': {"$in": fw_dict['archived_launches']}}))
+
+        return FireWork.from_dict(fw_dict)
+
     def get_wf_by_fw_id(self, fw_id):
         """
         Given a FireWork id, give back the Workflow containing that FireWork
         :param fw_id:
         :return: A Workflow object
         """
-
         links_dict = self.workflows.find_one({'nodes': fw_id})
         if not links_dict:
             raise ValueError("Could not find a Workflow with fw_id: {}".format(fw_id))
-        fws = map(self.get_fw_by_id, links_dict["nodes"])
+
+        m_timer.start("map.get_fw_by_id", fw_id=fw_id, nnodes=len(links_dict["nodes"]))
+#        fws = map(self.get_fw_by_id, links_dict["nodes"])
+        fw_dicts = self.fireworks.find({'fw_id': {'$in': links_dict['nodes']}})
+        fws = map(self.create_fw_from_dict, fw_dicts)
+        m_timer.stop("map.get_fw_by_id", fw_id=fw_id,)
+
         return Workflow(fws, links_dict['links'], links_dict['name'],
                         links_dict['metadata'])
 
@@ -540,6 +554,7 @@ class LaunchPad(FWSerializable):
         return False
 
     def _get_a_fw_to_run(self, query=None, fw_id=None, checkout=True):
+
         m_timer.start("_get_a_fw_to_run")
         m_query = dict(query) if query else {}  # make a defensive copy
         m_query['state'] = 'READY'
@@ -773,6 +788,7 @@ class LaunchPad(FWSerializable):
         :param launch_id:
         :param action: the FWAction of what to do next
         """
+        m_timer.start("launchpad.complete_launch", launch_id=launch_id)
         # update the launch data to COMPLETED, set end time, etc
         m_launch = self.get_launch_by_id(launch_id)
         m_launch.state = state
@@ -786,6 +802,7 @@ class LaunchPad(FWSerializable):
                 self._refresh_wf(self.get_wf_by_fw_id(fw_id), fw_id)
         # change return type to dict to make return type seriazlizable to
         # support job packing
+        m_timer.stop("launchpad.complete_launch", launch_id=launch_id)
         return m_launch.to_dict()
 
     def ping_launch(self, launch_id, ptime=None):
@@ -869,10 +886,12 @@ class LaunchPad(FWSerializable):
         :param wf: a Workflow object
         :param fw_id: the parent fw_id - children will be refreshed
         """
+        m_timer.start("launchpad._refresh_wf", fw_id=fw_id)
         # TODO: time how long it took to refresh the WF!
         # TODO: need a try-except here, high probability of failure if incorrect action supplied
         updated_ids = wf.refresh(fw_id)
         self._update_wf(wf, updated_ids)
+        m_timer.stop("launchpad._refresh_wf", fw_id=fw_id)
 
 
     def _update_wf(self, wf, updated_ids):

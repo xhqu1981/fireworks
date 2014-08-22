@@ -36,8 +36,10 @@ def launch_rocket(launchpad, fworker=None, fw_id=None, strm_lvl='INFO'):
     l_logger = get_fw_logger('rocket.launcher', l_dir=l_dir, stream_level=strm_lvl)
 
     log_multi(l_logger, 'Launching Rocket')
+    m_timer.start("launch_rocket", launchpad=id(launchpad))
     rocket = Rocket(launchpad, fworker, fw_id)
     rocket_ran = rocket.run()
+    m_timer.stop("launch_rocket", launchpad=id(launchpad))
     log_multi(l_logger, 'Rocket finished')
     return rocket_ran
 
@@ -68,6 +70,7 @@ def rapidfire(launchpad, fworker=None, m_dir=None, nlaunches=0, max_loops=-1, sl
 
     while num_loops != max_loops:
         while launchpad.run_exists(fworker):
+            m_timer.start("rapidfire-launch")
             os.chdir(curdir)
             launcher_dir = create_datestamp_dir(curdir, l_logger, prefix='launcher_')
             os.chdir(launcher_dir)
@@ -79,8 +82,10 @@ def rapidfire(launchpad, fworker=None, m_dir=None, nlaunches=0, max_loops=-1, sl
                 os.chdir(curdir)
                 os.rmdir(launcher_dir)
             if num_launched == nlaunches:
+                m_timer.stop("rapidfire-launch")
                 break
             time.sleep(0.15)  # add a small amount of buffer breathing time for DB to refresh, etc.
+            m_timer.stop("rapidfire-launch")
         if num_launched == nlaunches or nlaunches == 0:
             break
         log_multi(l_logger, 'Sleeping for {} secs'.format(sleep_time))
