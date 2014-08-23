@@ -34,6 +34,66 @@ __date__ = 'Jan 30, 2013'
 m_timer = timing.get_fw_timer("launchpad")
 # TODO: lots of duplication reduction and cleanup possible
 
+class ShellWorkflow(Workflow):
+    """Modifcation of Workflow class that uses lazy fireworks.
+    At initialization, the object is only a shell with no fireworks data.
+    The fireworks are loaded from mongodb on demand. 
+    Assumes workflow stored in mongodb is coherent.
+    """
+    class GetFromMongoDict(dict):
+        """
+        Subclass of dictionary that gets the items from Mongodb if not present.
+        """
+        #def __init__(self, launchpad, links_dict, *args, **kwargs):
+        def __init__(self, launchpad,  *args, **kwargs):
+            dict.__init__(self, *args, **kwargs)
+            self.launchpad = launchpad
+            #self.links_dict = links_dict
+
+        def __getitem__(self, fw_id):
+            fw = dict.__getitem__(self, fw_id)
+            if not fw:
+                # TODO: Read the parent and children fireworks from mongodb
+                fw = self.launchpd.get_fw_by_id(fw_id)
+                if not fw:
+                    raise ValueError("Firework not in database.")
+                dict.__setitem__(self, fw_id, fw)
+                return fw
+
+    def __init__(self, launchpad, fireworks_ids, links_dict=None, name=None,
+                 metadata=None, created_on=None, updated_on=None):
+        """
+        :param launchpad: (LaunchPad) - Luanchpad connected to a database
+        :param firework_ids: ([fw_ids]) - Ids that identify the fw in database
+        :param links_dict: (dict) links between the FWs as (parent_id):[(
+        child_id1, child_id2)]
+        :param metadata: (dict) metadata for this Workflow
+        Do only very basic checks
+        """
+        self.launchpad = launchpad
+        name = name or 'unnamed WF'  # prevent None names
+        self.name = name
+        links_dict = links_dict if links_dict else {}
+
+        # main dict containing mapping of an id to a fw
+        # self.id_fw has a lazy implementation. 
+        self.id_fw = GetFromMongoDict(fw_id:None for fw_id in firework_ids) 
+
+        for fw_id in firework_ids:
+            if fw_id not in links_dict:
+                links_dict[fw_id] = []
+
+        self.links = Workflow.Links(links_dict)
+
+        # sanity: make sure the set of nodes from the links_dict is equal to
+        # the set of nodes from id_fw
+        if set(self.links.nodes) != set(map(int, self.id_fw.keys())):
+            raise ValueError("Specified links don't match given FW")
+
+        self.metadata = metadata if metadata else {}
+        self.created_on = created_on or datetime.utcnow()
+        self.updated_on = updated_on or datetime.utcnow()
+
 class WFLock(object):
     """
     Lock a Workflow, i.e. for performing update operations
@@ -299,7 +359,7 @@ class LaunchPad(FWSerializable):
             raise ValueError("Could not find a Workflow with fw_id: {}".format(fw_id))
 
         m_timer.start("map.get_fw_by_id", fw_id=fw_id, nnodes=len(links_dict["nodes"]))
-#        fws = map(self.get_fw_by_id, links_dict["nodes"])
+        #fws = map(self.get_fw_by_id, links_dict["nodes"])
         fw_dicts = self.fireworks.find({'fw_id': {'$in': links_dict['nodes']}})
         fws = map(self.create_fw_from_dict, fw_dicts)
         m_timer.stop("map.get_fw_by_id", fw_id=fw_id,)
