@@ -94,6 +94,23 @@ class ShellWorkflow(Workflow):
         self.created_on = created_on or datetime.utcnow()
         self.updated_on = updated_on or datetime.utcnow()
 
+    @classmethod
+    def from_dict(cls, m_dict):
+        # Accepts only a ShellWorkflow dict
+        created_on = m_dict.get('created_on')
+        updated_on = m_dict.get('updated_on')
+        return ShellWorkflow(LaunchPad.from_dict(m_dict['launchpad']),
+                m_dict['firework_ids'], 
+                Workflow.Links.from_dict(m_dict['links']), m_dict.get('name'),
+                m_dict['metadata'], created_on, updated_on)
+
+    def to_dict(self):
+        return {'launchpad':self.launchpad.to_dict(),
+                'firework_ids': self.id_fw.keys(),
+                'links': self.links.to_dict(),
+                'name': self.name,
+                'metadata': self.metadata, 'updated_on': self.updated_on}
+
 class WFLock(object):
     """
     Lock a Workflow, i.e. for performing update operations
