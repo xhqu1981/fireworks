@@ -414,7 +414,7 @@ class LaunchPad(FWSerializable):
         #fws = map(self.get_fw_by_id, links_dict["nodes"])
         fws = []
         for fw_id in links_dict['nodes']:
-            fws.append(LazyFirework(fw_id, self.fireworks))
+            fws.append(LazyFirework(fw_id, self.fireworks, self.launches))
         m_timer.stop("map.get_fw_by_id", fw_id=fw_id,)
 
         return Workflow(fws, links_dict['links'], links_dict['name'],
