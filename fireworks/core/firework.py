@@ -185,13 +185,14 @@ class LazyFirework(object):
 
     **NOTE: Not tested yet!!**
     """
-    def __init__(self, fw_id, fw_collection):
+    def __init__(self, fw_id, fw_collection, launch_collection):
         # direct attr access
         def sa(k, v, s=self):
             s.__dict__[k] = v
 
         sa('fw_id', fw_id)
-        sa('_coll', fw_collection)
+        sa('_fw_coll', fw_collection)
+        sa('_launch_coll', launch_collection)
         sa('parents',  [])
         # return these attrs w/o instantiation
         sa('_local_attrs', ('fw_id', 'parents'))
@@ -206,19 +207,22 @@ class LazyFirework(object):
     def __getattr__(self, name):
         # direct attr access
         ga = lambda k: self.__dict__[k]
-
         # return local attrs immediately
         if name in ga('_local_attrs'):
             return ga(name)
         # reject unknown attrs
         if name not in ga('_fw_attrs'):
             raise AttributeError(name)
-        ga('_instantiate')(name)
-        return ga('_fw', name)
+        #if not self._fw or not :
+        self._instantiate(name)
+        return getattr(self._fw,name)
 
     def __setattr__(self, name, value):
         # direct attr access
+        print ("In __setattr__")
+        print (name, value)
         def sa(k, v, s=self):
+            print k, v
             s.__dict__[k] = v
         ga = lambda k: self.__dict__[k]
 
@@ -228,29 +232,38 @@ class LazyFirework(object):
         # reject unknown attrs
         if name not in ga('_fw_attrs'):
             raise AttributeError(name)
-        ga('_instantiate')(name)
-        sa('_fw', name, value)
+        self._instantiate(name)
+        setattr(self._fw, name, value)
 
     def _instantiate(self, name):
         # direct attr access
+        print ('In _instantiate')
+        print (name)
         def sa(k, v, s=self):
             s.__dict__[k] = v
         ga = lambda k: self.__dict__[k]
 
         if ga('_fw') is None:
             # Instantiate FireWork object
-            data = ga('_coll').find_one({'fw_id': self.fw_id})
-            sa('_fw', FireWork(data))
+            data = ga('_fw_coll').find_one({'fw_id': self.fw_id})
+            print ('data', data)
             # lazily instantiate launches, as well
             sa('_launch_data', {k: data.get(k, [])
                                 for k in self._fw_launch_attrs})
+            print self._launch_data
+
+            del data['launches']
+            del data['archived_launches']
+            sa('_fw', FireWork.from_dict(data))
         if (name in ga('_fw_launch_attrs')) and ga('_launch_data'):
             # If FireWork exists but launches not filled in from DB
             # and launch attr accessed, instantiate both launch attrs
-            fw = ga('_fw')
-            for a in ga('_fw_launch_attrs'):
-                setattr(fw, a, map(Launch.from_dict,
-                                   ga('_launch_data')[a]))
+            if self._launch_data:
+                fw = ga('_fw')
+                for a in ga('_fw_launch_attrs'):
+                    data = list(self._launch_coll.find(
+                        {'launch_id': {"$in": ga('_launch_data')[a]}}))
+                    setattr(fw, a, map(Launch.from_dict,data))
             sa('_launch_data', None)  # don't fetch again
 
 
