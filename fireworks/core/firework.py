@@ -186,7 +186,10 @@ class LazyFirework(object):
     **NOTE: Not tested yet!!**
     """
     def __init__(self, fw_id, fw_collection):
-        sa = lambda k, v: setattr(self, k, v)
+        # direct attr access
+        def sa(k, v, s=self):
+            s.__dict__[k] = v
+
         sa('fw_id', fw_id)
         sa('_coll', fw_collection)
         sa('parents',  [])
@@ -201,27 +204,39 @@ class LazyFirework(object):
         sa('_launch_data', None)
 
     def __getattr__(self, name):
+        # direct attr access
+        ga = lambda k: self.__dict__[k]
+
         # return local attrs immediately
-        if name in getattr(self, '_local_attrs'):
-            return getattr(self, name)
+        if name in ga('_local_attrs'):
+            return ga(name)
         # reject unknown attrs
-        if name not in getattr(self, '_fw_attrs'):
+        if name not in ga('_fw_attrs'):
             raise AttributeError(name)
-        getattr(self, '_instantiate')(name)
-        return getattr(self._fw, name)
+        ga('_instantiate')(name)
+        return ga('_fw', name)
 
     def __setattr__(self, name, value):
+        # direct attr access
+        def sa(k, v, s=self):
+            s.__dict__[k] = v
+        ga = lambda k: self.__dict__[k]
+
         # set local attrs immediately
-        if name in getattr(self, '_local_attrs'):
+        if name in ga('_local_attrs'):
             setattr(self, name, value)
         # reject unknown attrs
-        if name not in getattr(self, '_fw_attrs'):
+        if name not in ga('_fw_attrs'):
             raise AttributeError(name)
-        getattr(self, '_instantiate')(name)
-        setattr(self._fw, name, value)
+        ga('_instantiate')(name)
+        sa('_fw', name, value)
 
     def _instantiate(self, name):
-        sa, ga = lambda k, v: setattr(self, k, v), lambda k: getattr(self, k)
+        # direct attr access
+        def sa(k, v, s=self):
+            s.__dict__[k] = v
+        ga = lambda k: self.__dict__[k]
+
         if ga('_fw') is None:
             # Instantiate FireWork object
             data = ga('_coll').find_one({'fw_id': self.fw_id})
