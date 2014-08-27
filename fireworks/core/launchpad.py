@@ -18,7 +18,7 @@ from fireworks.fw_config import LAUNCHPAD_LOC, CONFIG_FILE_DIR, SORT_FWS, \
     RESERVATION_EXPIRATION_SECS, RUN_EXPIRATION_SECS, MAINTAIN_INTERVAL, WFLOCK_EXPIRATION_SECS, \
     WFLOCK_EXPIRATION_KILL
 from fireworks.utilities.fw_serializers import FWSerializable
-from fireworks.core.firework import FireWork, Launch, Workflow, FWAction, \
+from fireworks.core.firework import FireWork, LazyFirework, Launch, Workflow, FWAction, \
     Tracker
 from fireworks.utilities.fw_utilities import get_fw_logger
 from fireworks.utilities import timing
@@ -369,7 +369,16 @@ class LaunchPad(FWSerializable):
 
         return FireWork.from_dict(fw_dict)
 
-    def get_wf_by_fw_id_old(self, fw_id):
+    def create_lazy_fw_from_dict(self, fw_dict):
+        fw_dict['launches'] = list(self.launches.find(
+            {'launch_id': {"$in": fw_dict['launches']}}))
+
+        fw_dict['archived_launches'] = list(self.launches.find(
+            {'launch_id': {"$in": fw_dict['archived_launches']}}))
+
+        return LazyFirework.from_dict(fw_dict)
+
+    def get_wf_by_fw_id(self, fw_id):
         """
         Given a FireWork id, give back the Workflow containing that FireWork
         :param fw_id:
@@ -391,7 +400,27 @@ class LaunchPad(FWSerializable):
         return Workflow(fws, links_dict['links'], links_dict['name'],
                         links_dict['metadata'])
 
-    def get_wf_by_fw_id(self, fw_id):
+    def get_wf_by_fw_id_lzyfw(self, fw_id):
+        """
+        Given a FireWork id, give back the Workflow containing that FireWork
+        :param fw_id:
+        :return: A Workflow object
+        """
+        links_dict = self.workflows.find_one({'nodes': fw_id})
+        if not links_dict:
+            raise ValueError("Could not find a Workflow with fw_id: {}".format(fw_id))
+
+        m_timer.start("map.get_fw_by_id", fw_id=fw_id, nnodes=len(links_dict["nodes"]))
+        #fws = map(self.get_fw_by_id, links_dict["nodes"])
+        fws = []
+        for fw_id in links_dict['nodes']:
+            fws.append(LazyFirework(fw_id, self.fireworks))
+        m_timer.stop("map.get_fw_by_id", fw_id=fw_id,)
+
+        return Workflow(fws, links_dict['links'], links_dict['name'],
+                        links_dict['metadata'])
+
+    def get_wf_by_fw_id_shlwf(self, fw_id):
         """
         Given a FireWork id, give back the Workflow containing that FireWork
         :param fw_id:
@@ -903,7 +932,7 @@ class LaunchPad(FWSerializable):
         for fw in self.fireworks.find({'launches': launch_id}, {'fw_id': 1}):
             fw_id = fw['fw_id']
             with WFLock(self, fw_id):
-                self._refresh_wf(self.get_wf_by_fw_id(fw_id), fw_id)
+                self._refresh_wf(self.get_wf_by_fw_id_lzyfw(fw_id), fw_id)
         # change return type to dict to make return type seriazlizable to
         # support job packing
         m_timer.stop("launchpad.complete_launch", launch_id=launch_id)
@@ -994,14 +1023,14 @@ class LaunchPad(FWSerializable):
         # TODO: time how long it took to refresh the WF!
         # TODO: need a try-except here, high probability of failure if incorrect action supplied
         updated_ids = wf.refresh(fw_id)
-        print ('updated ids in _refresh_wf', updated_ids)
+        #print ('updated ids in _refresh_wf', updated_ids)
         self._update_wf(wf, updated_ids)
         m_timer.stop("launchpad._refresh_wf", fw_id=fw_id)
 
 
     def _update_wf(self, wf, updated_ids):
         updated_fws = [wf.id_fw[fid] for fid in updated_ids]
-        print ('updated_fws in _update_wf', updated_fws)
+        #print ('updated_fws in _update_wf', updated_fws)
         old_new = self._upsert_fws(updated_fws)
         wf._reassign_ids(old_new)
 
