@@ -178,6 +178,67 @@ class FWAction(FWSerializable):
         return "FWAction\n" + pprint.pformat(self.to_dict())
 
 
+class LazyFirework(object):
+    """
+    FireWork replacement that instantiates a real FireWork when
+    non-shallow attributes are accessed.
+
+    **NOTE: Not tested yet!!**
+    """
+    def __init__(self, fw_id, fw_collection):
+        sa = lambda k, v: setattr(self, k, v)
+        sa('fw_id', fw_id)
+        sa('_coll', fw_collection)
+        sa('parents',  [])
+        # return these attrs w/o instantiation
+        sa('_local_attrs', ('fw_id', 'parents'))
+        # instantiate on access to these attrs
+        sa('_fw_attrs', ('state', 'spec', 'launches', 'archived_launches',
+                         'name', 'created_on', 'to_dict', 'to_db_dict'))
+        sa('_fw_launch_attrs', ('launches', 'archived_launches'))
+        # hold delegation obj
+        sa('_fw', None)
+        sa('_launch_data', None)
+
+    def __getattr__(self, name):
+        # return local attrs immediately
+        if name in getattr(self, '_local_attrs'):
+            return getattr(self, name)
+        # reject unknown attrs
+        if name not in getattr(self, '_fw_attrs'):
+            raise AttributeError(name)
+        getattr(self, '_instantiate')(name)
+        return getattr(self._fw, name)
+
+    def __setattr__(self, name, value):
+        # set local attrs immediately
+        if name in getattr(self, '_local_attrs'):
+            setattr(self, name, value)
+        # reject unknown attrs
+        if name not in getattr(self, '_fw_attrs'):
+            raise AttributeError(name)
+        getattr(self, '_instantiate')(name)
+        setattr(self._fw, name, value)
+
+    def _instantiate(self, name):
+        sa, ga = lambda k, v: setattr(self, k, v), lambda k: getattr(self, k)
+        if ga('_fw') is None:
+            # Instantiate FireWork object
+            data = ga('_coll').find_one({'fw_id': self.fw_id})
+            sa('_fw', FireWork(data))
+            # lazily instantiate launches, as well
+            sa('_launch_data', {k: data.get(k, [])
+                                for k in self._fw_launch_attrs})
+        if (name in ga('_fw_launch_attrs')) and ga('_launch_data'):
+            # If FireWork exists but launches not filled in from DB
+            # and launch attr accessed, instantiate both launch attrs
+            fw = ga('_fw')
+            for a in ga('_fw_launch_attrs'):
+                setattr(fw, a, map(Launch.from_dict,
+                                   ga('_launch_data')[a]))
+            sa('_launch_data', None)  # don't fetch again
+
+
 class FireWork(FWSerializable):
     """
     A FireWork is a workflow step and might be contain several FireTasks
