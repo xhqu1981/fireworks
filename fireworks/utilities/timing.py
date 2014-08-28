@@ -261,10 +261,10 @@ class NullTimer(Timer):
     def __init__(self):
         Timer.__init__(self, "")
 
-    def start(self, stage):
+    def start(self, stage, **kw):
         pass
 
-    def stop(self, stage):
+    def stop(self, stage, **kw):
         pass
 
     def write(self, **kwargs):
