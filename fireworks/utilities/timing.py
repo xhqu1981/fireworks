@@ -132,12 +132,26 @@ class Timer(object):
                 do_something_else()
 
     Limitations:
-    - Instances are not thread-safe.
+    - Instances are not thread-safe (arguably a feature)
     - The set_ns() class method is not thread-safe.
     - The 'with' block() cannot be nested,
       instead use different stages with begin()/end() pairs.
     - The only output format is CSV.
     - There is no (easy) programmatic way to get the results.
+
+    Timers may be nested within themselves, e.g.:
+
+       timer = Timer("myTimer")
+       function do_something(x):
+          timer.start("do_something")
+          print(x)
+          if x < 100:
+              do_something(x + 1)
+          timer.stop("do_something")
+
+     In this case the "nested" calls to the timer are basically ignored
+     and only the outer timer is calculated. This loses information, but
+     is robust (can handle any depth of nesting) and simple.
     """
 
     _ns = None
