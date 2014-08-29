@@ -75,7 +75,6 @@ def rapidfire(launchpad, fworker=None, m_dir=None, nlaunches=0, max_loops=-1, sl
             launcher_dir = create_datestamp_dir(curdir, l_logger, prefix='launcher_')
             os.chdir(launcher_dir)
             rocket_ran = launch_rocket(launchpad, fworker, strm_lvl=strm_lvl)
-            m_timer.start("rapidfire-launch.post")
             if rocket_ran:
                 num_launched += 1
             elif not os.listdir(launcher_dir):
