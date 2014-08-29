@@ -241,7 +241,7 @@ class LazyFirework(object):
         if ga('_fw') is None:
             # Instantiate FireWork object
             data = ga('_fw_coll').find_one({'fw_id': self.fw_id})
-            print ('data', data)
+            #print ('data', data)
             # lazily instantiate launches, as well
             sa('_launch_data', {k: data.get(k, [])
                                 for k in self._fw_launch_attrs})
