@@ -65,6 +65,7 @@ class Benchmark(object):
         else:
             lvl = logging.WARN
         self.log.setLevel(lvl)
+        self._hnd.setLevel(lvl)
         self.loglevel = logging.getLevelName(lvl)
 
         try:

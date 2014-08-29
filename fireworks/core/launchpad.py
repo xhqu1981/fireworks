@@ -34,7 +34,6 @@ __date__ = 'Jan 30, 2013'
 
 m_timer = timing.get_fw_timer("launchpad")
 
-_log = logging.getLogger(__name__)
 
 # TODO: lots of duplication reduction and cleanup possible
 
@@ -86,7 +85,6 @@ class ShellWorkflow(Workflow):
         # self.id_fw has a lazy implementation. 
         self.id_fw = ShellWorkflow.GetFromMongoDict(self.launchpad,((fw_id,None)for fw_id in firework_ids)) 
 
-        print links_dict
         for fw_id in firework_ids:
             if fw_id not in links_dict:
                 links_dict[fw_id] = []
@@ -188,6 +186,7 @@ class LaunchPad(FWSerializable):
         # set up logger
         self.logdir = logdir
         self.strm_lvl = strm_lvl if strm_lvl else 'INFO'
+
         self.m_logger = get_fw_logger('launchpad', l_dir=self.logdir,
                                       stream_level=self.strm_lvl)
 

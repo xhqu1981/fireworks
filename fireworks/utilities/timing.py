@@ -263,8 +263,9 @@ class Timer(object):
     def write(self, stream=sys.stdout):
         """Write results (CSV) to a stream.
         """
-        stream.write(str(self))
-        stream.write("\n")
+        s = str(self)
+        if s:
+            stream.write(s + "\n")
 
     def _csv(self):
         global _wrote_header

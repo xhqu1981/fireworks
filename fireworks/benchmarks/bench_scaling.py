@@ -6,6 +6,7 @@ __date__ = '5/30/14'
 
 # System
 import argparse
+import logging
 import os
 import socket
 import sqlite3
@@ -14,9 +15,13 @@ import time
 # Local
 from fireworks.benchmarks.bench import Benchmark
 from fireworks.utilities import timing
+
 _client = None
 nodes = 1
 _id = None
+
+_log = logging.getLogger("benchmark")
+
 
 def get_client():
     global _client
@@ -102,8 +107,10 @@ def main():
                     help="Turn off log messages")
     args = ap.parse_args()
 
-    # Set verbosity.
+    # Set verbosity (will be passed to Benchmark class)
     vb = -1 if args.quiet else min(args.vb, 2)
+    _log.setLevel((logging.FATAL, logging.WARN, logging.INFO, logging.DEBUG)
+                  [vb + 1])
 
     # Turn on tracing if requested
     if args.trace:
