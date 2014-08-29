@@ -219,10 +219,7 @@ class LazyFirework(object):
 
     def __setattr__(self, name, value):
         # direct attr access
-        print ("In __setattr__")
-        print (name, value)
         def sa(k, v, s=self):
-            print k, v
             s.__dict__[k] = v
         ga = lambda k: self.__dict__[k]
 
@@ -237,8 +234,6 @@ class LazyFirework(object):
 
     def _instantiate(self, name):
         # direct attr access
-        print ('In _instantiate')
-        print (name)
         def sa(k, v, s=self):
             s.__dict__[k] = v
         ga = lambda k: self.__dict__[k]
@@ -250,7 +245,7 @@ class LazyFirework(object):
             # lazily instantiate launches, as well
             sa('_launch_data', {k: data.get(k, [])
                                 for k in self._fw_launch_attrs})
-            print self._launch_data
+            #print self._launch_data
 
             del data['launches']
             del data['archived_launches']
