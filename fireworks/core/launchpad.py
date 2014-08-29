@@ -5,6 +5,7 @@ The LaunchPad manages the FireWorks database.
 """
 import datetime
 import json
+import logging
 import os
 import random
 import time
@@ -32,6 +33,9 @@ __email__ = 'ajain@lbl.gov'
 __date__ = 'Jan 30, 2013'
 
 m_timer = timing.get_fw_timer("launchpad")
+
+_log = logging.getLogger(__name__)
+
 # TODO: lots of duplication reduction and cleanup possible
 
 class ShellWorkflow(Workflow):
@@ -454,9 +458,9 @@ class LaunchPad(FWSerializable):
                                             'fw_id': {"$nin": fw_ids}}, {'launch_id': 1}):
                 launch_ids.append(i)
 
-        print("Remove fws %s" % fw_ids)
-        print("Remove launches %s" % launch_ids)
-        print("Removing workflow.")
+        _log.debug("Remove fws %s" % fw_ids)
+        _log.debug("Remove launches %s" % launch_ids)
+        _log.debug("Removing workflow.")
         self.launches.remove({'launch_id': {"$in": launch_ids}})
         self.fireworks.remove({"fw_id": {"$in": fw_ids}})
         self.workflows.remove({'nodes': fw_id})
