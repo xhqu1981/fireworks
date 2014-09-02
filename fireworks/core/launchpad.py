@@ -10,6 +10,11 @@ import random
 import time
 import traceback
 from collections import OrderedDict
+import logging
+#logging.basicConfig()  # only need to do this once
+_log = logging.getLogger(__name__) # do this in every module
+
+
 
 from pymongo.mongo_client import MongoClient
 from pymongo import DESCENDING, ASCENDING
@@ -393,7 +398,6 @@ class LaunchPad(FWSerializable):
         fw_dicts = self.fireworks.find({'fw_id': {'$in': links_dict['nodes']}})
         fws = map(self.create_fw_from_dict, fw_dicts)
         m_timer.stop("map.get_fw_by_id", fw_id=fw_id,)
-
         return Workflow(fws, links_dict['links'], links_dict['name'],
                         links_dict['metadata'])
 
@@ -412,10 +416,14 @@ class LaunchPad(FWSerializable):
         fws = []
         for fw_id in links_dict['nodes']:
             fws.append(LazyFirework(fw_id, self.fireworks, self.launches))
+        if 'fw_states' in links_dict:
+            fw_states = dict([(int(k), v) for (k, v) in links_dict['fw_states'].items()])
+        else:
+            fw_states = None
         m_timer.stop("map.get_fw_by_id", fw_id=fw_id,)
 
         return Workflow(fws, links_dict['links'], links_dict['name'],
-                        links_dict['metadata'])
+                        links_dict['metadata'],fw_states=fw_states)
 
     def get_wf_by_fw_id_shlwf(self, fw_id):
         """
@@ -1020,6 +1028,9 @@ class LaunchPad(FWSerializable):
         # TODO: time how long it took to refresh the WF!
         # TODO: need a try-except here, high probability of failure if incorrect action supplied
         updated_ids = wf.refresh(fw_id)
+        #print(wf.fw_states)
+        #print wf.id_fw.keys()
+        #print wf.state
         #print ('updated ids in _refresh_wf', updated_ids)
         self._update_wf(wf, updated_ids)
         m_timer.stop("launchpad._refresh_wf", fw_id=fw_id)

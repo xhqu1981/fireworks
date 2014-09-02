@@ -219,10 +219,7 @@ class LazyFirework(object):
 
     def __setattr__(self, name, value):
         # direct attr access
-        print ("In __setattr__")
-        print (name, value)
         def sa(k, v, s=self):
-            print k, v
             s.__dict__[k] = v
         ga = lambda k: self.__dict__[k]
 
@@ -237,8 +234,6 @@ class LazyFirework(object):
 
     def _instantiate(self, name):
         # direct attr access
-        print ('In _instantiate')
-        print (name)
         def sa(k, v, s=self):
             s.__dict__[k] = v
         ga = lambda k: self.__dict__[k]
@@ -246,11 +241,9 @@ class LazyFirework(object):
         if ga('_fw') is None:
             # Instantiate FireWork object
             data = ga('_fw_coll').find_one({'fw_id': self.fw_id})
-            print ('data', data)
             # lazily instantiate launches, as well
             sa('_launch_data', {k: data.get(k, [])
                                 for k in self._fw_launch_attrs})
-            print self._launch_data
 
             del data['launches']
             del data['archived_launches']
@@ -707,7 +700,7 @@ class Workflow(FWSerializable):
                     state)
 
     def __init__(self, fireworks, links_dict=None, name=None, metadata=None, created_on=None,
-                 updated_on=None):
+                 updated_on=None, fw_states=None):
         """
         :param fireworks: ([FireWork]) - all FireWorks in this workflow
         :param links_dict: (dict) links between the FWs as (parent_id):[(
@@ -749,6 +742,10 @@ class Workflow(FWSerializable):
         self.metadata = metadata if metadata else {}
         self.created_on = created_on or datetime.utcnow()
         self.updated_on = updated_on or datetime.utcnow()
+        if fw_states:
+            self.fw_states = fw_states
+        else:
+            self.fw_states = {key:self.id_fw[key].state for key in self.id_fw}
 
     @property
     def fws(self):
@@ -759,7 +756,9 @@ class Workflow(FWSerializable):
 
         # get state of workflow
         m_state = 'READY'
-        states = [fw.state for fw in self.fws]
+        #states = [fw.state for fw in self.fws]
+        # Bharat replaced the above line with below line
+        states = self.fw_states
         if all([s == 'COMPLETED' for s in states]):
             m_state = 'COMPLETED'
         elif all([s == 'ARCHIVED' for s in states]):
@@ -942,6 +941,8 @@ class Workflow(FWSerializable):
                     updated_ids.add(fw_id)
 
         fw.state = m_state
+        # Added by Bharat
+        self.fw_states[fw_id] = m_state
 
         if m_state != prev_state:
             updated_ids.add(fw_id)
@@ -1021,6 +1022,7 @@ class Workflow(FWSerializable):
         m_dict['name'] = self.name
         m_dict['created_on'] = self.created_on
         m_dict['updated_on'] = self.updated_on
+        m_dict['fw_states'] = dict([(str(k), v) for (k, v) in self.fw_states.items()])
         return m_dict
 
     def to_display_dict(self):
@@ -1051,9 +1053,13 @@ class Workflow(FWSerializable):
         if 'fws' in m_dict:
             created_on = m_dict.get('created_on')
             updated_on = m_dict.get('updated_on')
+            if 'fw_states' in m_dict:
+                fw_states = dict([(int(k), v) for (k, v) in m_dict['fw_states'].items()])
+            else:
+                fw_states = None
             return Workflow([FireWork.from_dict(f) for f in m_dict['fws']],
                             Workflow.Links.from_dict(m_dict['links']), m_dict.get('name'),
-                            m_dict['metadata'], created_on, updated_on)
+                            m_dict['metadata'], created_on, updated_on, fw_states=fw_states)
         else:
             return Workflow.from_FireWork(FireWork.from_dict(m_dict))
 
