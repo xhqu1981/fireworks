@@ -132,12 +132,26 @@ class Timer(object):
                 do_something_else()
 
     Limitations:
-    - Instances are not thread-safe.
+    - Instances are not thread-safe (arguably a feature)
     - The set_ns() class method is not thread-safe.
     - The 'with' block() cannot be nested,
       instead use different stages with begin()/end() pairs.
     - The only output format is CSV.
     - There is no (easy) programmatic way to get the results.
+
+    Timers may be nested within themselves, e.g.:
+
+       timer = Timer("myTimer")
+       function do_something(x):
+          timer.start("do_something")
+          print(x)
+          if x < 100:
+              do_something(x + 1)
+          timer.stop("do_something")
+
+     In this case the "nested" calls to the timer are basically ignored
+     and only the outer timer is calculated. This loses information, but
+     is robust (can handle any depth of nesting) and simple.
     """
 
     _ns = None
@@ -148,7 +162,7 @@ class Timer(object):
         self._cur_stage = None
         self._stage_times = {}
         self._stage_counts = {}
-        self._stage_active = set()
+        self._stage_active = {}  # map <name>: depth-of-stack
 
     def __len__(self):
         """Number of stages timed.
@@ -199,10 +213,17 @@ class Timer(object):
     def start(self, stage="null", **kwargs):
         """Begin timing.
         """
-        now, tm = time.time(), self._stage_times.get(stage, 0)
-        self._stage_times[stage] = tm - now
-        self._stage_active.add(stage)
-        if self._trace_out:
+        # check if this the first, not a nested, start
+        first_start = stage not in self._stage_active
+        if first_start:
+            now, tm = time.time(), self._stage_times.get(stage, 0)
+            self._stage_times[stage] = tm - now
+            self._stage_active[stage] = 1
+        else:
+            # for nested 'start', do not restart timer
+            # just increment the active count
+            self._stage_active[stage] += 1
+        if self._trace_out and first_start:
             ex = ' ' + self._kvp(kwargs) if kwargs else ''
             self._trace_out.write("{} {:.6f} {}.begin{}\n"
                                   .format(self._get_tmstr(now), now, stage, ex))
@@ -211,11 +232,18 @@ class Timer(object):
         """Stop timing.
         """
         now = time.time()
-        self._stage_times[stage] += now
-        count = self._stage_counts.get(stage, 0)
-        self._stage_counts[stage] = count + 1
-        self._stage_active.remove(stage)
-        if self._trace_out:
+        # check if stage will still be active after this 'stop'
+        final_stop = self._stage_active[stage] == 1
+        if final_stop:
+            self._stage_times[stage] += now
+            count = self._stage_counts.get(stage, 0)
+            self._stage_counts[stage] = count + 1
+            del self._stage_active[stage]
+        else:
+            # if the stage will remain active, do not stop timer,
+            # just decrement the active count
+            self._stage_active[stage] -= 1
+        if self._trace_out and final_stop:
             ex = ' ' + self._kvp(kwargs) if kwargs else ''
             self._trace_out.write("{} {:.6f} {}.end{}\n"
                                   .format(self._get_tmstr(now), now, stage, ex))
@@ -224,8 +252,8 @@ class Timer(object):
         """Stop all timers.
         Idempotent.
         """
-        map(self.stop, list(self._stage_active))
-        self._stage_active = set()
+        map(self.stop, self._stage_active.keys())
+        self._stage_active = {}
 
     def __str__(self):
         """Return results as CSV.
@@ -235,8 +263,9 @@ class Timer(object):
     def write(self, stream=sys.stdout):
         """Write results (CSV) to a stream.
         """
-        stream.write(str(self))
-        stream.write("\n")
+        s = str(self)
+        if s:
+            stream.write(s + "\n")
 
     def _csv(self):
         global _wrote_header

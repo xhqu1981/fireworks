@@ -5,6 +5,7 @@ The LaunchPad manages the FireWorks database.
 """
 import datetime
 import json
+import logging
 import os
 import random
 import time
@@ -37,6 +38,8 @@ __email__ = 'ajain@lbl.gov'
 __date__ = 'Jan 30, 2013'
 
 m_timer = timing.get_fw_timer("launchpad")
+
+
 # TODO: lots of duplication reduction and cleanup possible
 
 class ShellWorkflow(Workflow):
@@ -87,7 +90,6 @@ class ShellWorkflow(Workflow):
         # self.id_fw has a lazy implementation. 
         self.id_fw = ShellWorkflow.GetFromMongoDict(self.launchpad,((fw_id,None)for fw_id in firework_ids)) 
 
-        print links_dict
         for fw_id in firework_ids:
             if fw_id not in links_dict:
                 links_dict[fw_id] = []
@@ -189,6 +191,7 @@ class LaunchPad(FWSerializable):
         # set up logger
         self.logdir = logdir
         self.strm_lvl = strm_lvl if strm_lvl else 'INFO'
+
         self.m_logger = get_fw_logger('launchpad', l_dir=self.logdir,
                                       stream_level=self.strm_lvl)
 
@@ -459,9 +462,9 @@ class LaunchPad(FWSerializable):
                                             'fw_id': {"$nin": fw_ids}}, {'launch_id': 1}):
                 launch_ids.append(i)
 
-        print("Remove fws %s" % fw_ids)
-        print("Remove launches %s" % launch_ids)
-        print("Removing workflow.")
+        _log.debug("Remove fws %s" % fw_ids)
+        _log.debug("Remove launches %s" % launch_ids)
+        _log.debug("Removing workflow.")
         self.launches.remove({'launch_id': {"$in": launch_ids}})
         self.fireworks.remove({"fw_id": {"$in": fw_ids}})
         self.workflows.remove({'nodes': fw_id})
