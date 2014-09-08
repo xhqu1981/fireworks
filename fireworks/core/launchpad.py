@@ -396,14 +396,11 @@ class LaunchPad(FWSerializable):
         if not links_dict:
             raise ValueError("Could not find a Workflow with fw_id: {}".format(fw_id))
 
-        m_timer.start("map.get_wf_by_fw_id", fw_id=fw_id, nnodes=len(links_dict["nodes"]))
+        m_timer.start("map.get_fw_by_id", fw_id=fw_id, nnodes=len(links_dict["nodes"]))
         #fws = map(self.get_fw_by_id, links_dict["nodes"])
         fw_dicts = self.fireworks.find({'fw_id': {'$in': links_dict['nodes']}})
-#        fws = map(self.get_fw_by_id, links_dict["nodes"])
-        linked_nodes = links_dict['nodes']
-        fw_dicts = self.fireworks.find({'fw_id': {'$in': list(linked_nodes)}})
         fws = map(self.create_fw_from_dict, fw_dicts)
-        m_timer.stop("map.get_wf_by_fw_id", fw_id=fw_id,)
+        m_timer.stop("map.get_fw_by_id", fw_id=fw_id,)
         return Workflow(fws, links_dict['links'], links_dict['name'],
                         links_dict['metadata'])
 

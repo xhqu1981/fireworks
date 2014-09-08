@@ -129,6 +129,7 @@ class Rocket():
                 f.truncate()
 
             launch_id = None  # we don't need this in offline mode...
+        m_timer.stop("rocket.run", **ids)
         ids['launch_id'] = str(launch_id)
 
         if not m_fw:
