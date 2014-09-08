@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 """
 A runnable script for managing a FireWorks database (a command-line interface to launchpad.py)
 """
@@ -299,7 +297,7 @@ def display_wfs(args):
 
 def detect_lostruns(args):
     lp = get_lp(args)
-    fl,ff = lp.detect_lostruns(expiration_secs=args.time, fizzle=args.fizzle, rerun=args.rerun, max_runtime=args.max_runtime)
+    fl, ff = lp.detect_lostruns(expiration_secs=args.time, fizzle=args.fizzle, rerun=args.rerun, max_runtime=args.max_runtime, min_runtime=args.min_runtime)
     lp.m_logger.debug('Detected {} FIZZLED launches: {}'.format(len(fl), fl))
     lp.m_logger.info('Detected {} FIZZLED FWs: {}'.format(len(ff), ff))
 
@@ -488,7 +486,7 @@ def get_output_func(format):
         return lambda x: json.dumps(x, default=DATETIME_HANDLER,
                                     indent=4)
     else:
-        return lambda x: yaml.dump(recursive_dict(x), default_flow_style=False)
+        return lambda x: yaml.dump(recursive_dict(x, preserve_unicode=False), default_flow_style=False)
 
 
 def lpad():
@@ -516,7 +514,8 @@ def lpad():
                     "choices": FireWork.STATE_RANKS.keys()}
     disp_args = ['-d', '--display_format']
     disp_kwargs = {"type": str, "help": "Display format.", "default": "less",
-                   "choices": ["all", "more", "less", "ids", "count"]}
+                   "choices": ["all", "more", "less", "ids", "count",
+                               "reservations"]}
 
     query_args = ["-q", "--query"]
     query_kwargs = {"help": 'Query (enclose pymongo-style dict in '
@@ -702,8 +701,8 @@ def lpad():
                                 type=int)
     fizzled_parser.add_argument('--fizzle', help='mark lost runs as fizzled', action='store_true')
     fizzled_parser.add_argument('--rerun', help='rerun lost runs', action='store_true')
-    fizzled_parser.add_argument('--max_runtime', help='max runtime, helpful for tracing down walltime kills (seconds)',
-                                type=int)
+    fizzled_parser.add_argument('--max_runtime', help='max runtime, matching failures ran no longer than this (seconds)', type=int)
+    fizzled_parser.add_argument('--min_runtime', help='min runtime, matching failures must have run at least this long (seconds)', type=int)
     fizzled_parser.set_defaults(func=detect_lostruns)
 
     priority_parser = subparsers.add_parser('set_priority', help='modify the priority of one or more FireWorks')
