@@ -129,7 +129,6 @@ class Rocket():
                 f.truncate()
 
             launch_id = None  # we don't need this in offline mode...
-        m_timer.stop("rocket.run", **ids)
         ids['launch_id'] = str(launch_id)
 
         if not m_fw:
@@ -161,6 +160,7 @@ class Rocket():
         if PRINT_FW_YAML:
             m_fw.to_file('FW.yaml')
 
+        m_timer.stop("rocket.run", **ids)
         try:
             my_spec = dict(m_fw.spec)  # make a copy of spec, don't override original
             my_spec["_fw_env"] = self.fworker.env
@@ -205,6 +205,7 @@ class Rocket():
                 if m_action.skip_remaining_tasks:
                     break
 
+            m_timer.start("rocket.run.finish")
             # add job packing info if this is needed
             if FWData().MULTIPROCESSING and STORE_PACKING_INFO:
                 all_stored_data['multiprocess_name'] = multiprocessing.current_process().name
@@ -224,6 +225,7 @@ class Rocket():
             m_action.stored_data = all_stored_data
             m_action.mod_spec = all_mod_spec
             m_action.update_spec = all_update_spec
+            m_timer.stop("rocket.run.finish")
 
             if lp:
                 lp.complete_launch(launch_id, m_action, 'COMPLETED')

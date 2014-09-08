@@ -396,14 +396,14 @@ class LaunchPad(FWSerializable):
         if not links_dict:
             raise ValueError("Could not find a Workflow with fw_id: {}".format(fw_id))
 
-        m_timer.start("map.get_fw_by_id", fw_id=fw_id, nnodes=len(links_dict["nodes"]))
+        m_timer.start("map.get_wf_by_fw_id", fw_id=fw_id, nnodes=len(links_dict["nodes"]))
         #fws = map(self.get_fw_by_id, links_dict["nodes"])
         fw_dicts = self.fireworks.find({'fw_id': {'$in': links_dict['nodes']}})
 #        fws = map(self.get_fw_by_id, links_dict["nodes"])
         linked_nodes = links_dict['nodes']
         fw_dicts = self.fireworks.find({'fw_id': {'$in': list(linked_nodes)}})
         fws = map(self.create_fw_from_dict, fw_dicts)
-        m_timer.stop("map.get_fw_by_id", fw_id=fw_id,)
+        m_timer.stop("map.get_wf_by_fw_id", fw_id=fw_id,)
         return Workflow(fws, links_dict['links'], links_dict['name'],
                         links_dict['metadata'])
 
@@ -417,7 +417,7 @@ class LaunchPad(FWSerializable):
         if not links_dict:
             raise ValueError("Could not find a Workflow with fw_id: {}".format(fw_id))
 
-        m_timer.start("map.get_fw_by_id", fw_id=fw_id, nnodes=len(links_dict["nodes"]))
+        m_timer.start("get_lazywf_by_fw_id", fw_id=fw_id, nnodes=len(links_dict["nodes"]))
         #fws = map(self.get_fw_by_id, links_dict["nodes"])
         fws = []
         for fw_id in links_dict['nodes']:
@@ -426,7 +426,7 @@ class LaunchPad(FWSerializable):
             fw_states = dict([(int(k), v) for (k, v) in links_dict['fw_states'].items()])
         else:
             fw_states = None
-        m_timer.stop("map.get_fw_by_id", fw_id=fw_id,)
+        m_timer.stop("get_lazywf_by_fw_id", fw_id=fw_id,)
 
         return Workflow(fws, links_dict['links'], links_dict['name'],
                         links_dict['metadata'],fw_states=fw_states)
@@ -586,7 +586,9 @@ class LaunchPad(FWSerializable):
         Checks to see if the database contains any FireWorks that are ready to run
         :return: (T/F)
         """
+        m_timer.start("launchpad.run_exists")
         q = fworker.query if fworker else {}
+        m_timer.stop("launchpad.run_exists")
         return bool(self._get_a_fw_to_run(query=q, checkout=False))
 
     def tuneup(self, bkground=True):
@@ -875,9 +877,10 @@ class LaunchPad(FWSerializable):
         """
 
         # TODO: this method is confusing, says AJ of Xmas past. Clean it up, remove duplication, etc.
-
+        m_timer.start("launchpad.checkout_fw")
         m_fw = self._get_a_fw_to_run(fworker.query, fw_id)
         if not m_fw:
+            m_timer.stop("launchpad.checkout_fw")
             return None, None
 
         # was this Launch previously reserved? If so, overwrite that reservation with this Launch
@@ -918,6 +921,7 @@ class LaunchPad(FWSerializable):
 
         self.m_logger.debug('Checked out FW with id: {}'.format(m_fw.fw_id))
 
+        m_timer.stop("launchpad.checkout_fw")
         # use dict as return type, just to be compatible with multiprocessing
         return m_fw, l_id
 
@@ -932,21 +936,23 @@ class LaunchPad(FWSerializable):
         :param launch_id:
         :param action: the FWAction of what to do next
         """
-        m_timer.start("launchpad.complete_launch", launch_id=launch_id)
+        m_timer.start("launchpad.complete_launch1", launch_id=launch_id)
         # update the launch data to COMPLETED, set end time, etc
         m_launch = self.get_launch_by_id(launch_id)
         m_launch.state = state
         m_launch.action = action
         self.launches.find_and_modify({'launch_id': m_launch.launch_id}, m_launch.to_db_dict(), upsert=True)
+        m_timer.stop("launchpad.complete_launch1", launch_id=launch_id)
 
         # find all the fws that have this launch
+        m_timer.start("launchpad.complete_launch2", launch_id=launch_id)
         for fw in self.fireworks.find({'launches': launch_id}, {'fw_id': 1}):
             fw_id = fw['fw_id']
             with WFLock(self, fw_id):
                 self._refresh_wf(self.get_wf_by_fw_id_lzyfw(fw_id), fw_id)
         # change return type to dict to make return type seriazlizable to
         # support job packing
-        m_timer.stop("launchpad.complete_launch", launch_id=launch_id)
+        m_timer.stop("launchpad.complete_launch2", launch_id=launch_id)
         return m_launch.to_dict()
 
     def ping_launch(self, launch_id, ptime=None):
