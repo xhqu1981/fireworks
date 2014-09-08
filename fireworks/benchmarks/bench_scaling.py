@@ -15,7 +15,7 @@ import time
 from fireworks.benchmarks.bench import Benchmark
 
 _client = None
-
+nodes = 1
 
 def get_client():
     global _client
@@ -71,6 +71,8 @@ def run(bench, tasks, workflows, deps, np, db):
 
 
 def main():
+    global nodes
+
     ap = argparse.ArgumentParser("Load or run workflows")
     ap.add_argument("--mode", dest="mode", default="load",
                     help="Mode: load, run")
@@ -84,6 +86,7 @@ def main():
                     help="Reset the FireWorks DB before starting")
     ap.add_argument("--np", dest="np", type=int, default=1,
                     help="Parallelism, for 'run' mode only")
+    ap.add_argument("--clients", dest="clients", type=int, default=1)
     ap.add_argument("--rfile", dest="rfile", default="/tmp/benchmarks.sqlite",
                     help="Results SQLite file (%(default)s)")
     ap.add_argument("-v", "--verbose", dest="vb", action="count", default=0,
@@ -98,6 +101,8 @@ def main():
         bench.reset()
 
     db = init_results(args.rfile)
+
+    nodes = args.np * args.clients
 
     if args.mode == "load":
         load(bench, args.tasks, args.workflows, args.type, db)
