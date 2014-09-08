@@ -1,0 +1,67 @@
+#PBS -A matgen
+#PBS -q regular
+#PBS -l nodes={nodes}:ppn={ppn}
+#PBS -l walltime=01:30:00
+#PBS -N fw_bench
+#PBS -e fw_bench.$PBS_JOBID.err
+#PBS -o fw_bench.$PBS_JOBID.out
+#PBS -V
+
+cd $PBS_O_WORKDIR
+module load python
+module load mongodb
+# Change for virtualenv where fireworks is installed
+source ~/.virtualenvs/carver-matgen/bin/activate
+
+NUM_RUNS=5
+
+# Start MongoDB server
+./start-mongo-carver.sh $PBS_JOBID
+sleep 5
+
+# Params
+WF={workflows}
+TASKS={tasks}
+TYPE={wftype}
+# Change to where Sqlite results should be stored
+RFILE=$SCRATCH/spiderpig/fireworks/scaling/benchmark-results.sqlite
+
+RUNDIR=$PBS_O_WORKDIR/$PBS_JOBID
+mkdir $RUNDIR
+
+# File for run
+exfile=$RUNDIR/ex.sh
+cat > $exfile <<EOF
+#!/bin/sh
+cd $PBS_O_WORKDIR
+module load python
+module load mongodb
+source ~/.virtualenvs/carver-matgen/bin/activate
+python $PBS_O_WORKDIR/bench_scaling.py --mode run --workflows $WF --tasks $TASKS --type $TYPE \
+                        --quiet --clients {clients} --run \$1 --rfile $RFILE
+EOF
+chmod 755 $exfile
+
+# Debug
+#printf "Execute this file:\n"
+#printf "===\n"
+#cat $exfile
+#printf "===\n"
+
+i=0
+while [ $i -lt $NUM_RUNS ]; do
+    printf "Start $i\n"
+    # Load
+    printf "  Load $i\n"
+    python $PBS_O_WORKDIR/bench_scaling.py --mode load --workflows $WF --tasks $TASKS --type $TYPE \
+           --reset --quiet --clients {clients} --run $i --rfile $RFILE
+    # Run
+    printf "  Run $i\n"
+    pbsdsh $exfile $i
+    printf "Done $i\n"
+    # Loop
+    i=$(($i + 1))
+done
+
+# Stop MongoDB
+./stop-mongo.sh

@@ -1,0 +1,3 @@
+#!/bin/sh
+sqlite3 -header -separator , /global/scratch2/sd/dang/spiderpig/fireworks/scaling/benchmark-results.sqlite \
+ "$*"
