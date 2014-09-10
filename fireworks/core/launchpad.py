@@ -541,7 +541,7 @@ class LaunchPad(FWSerializable):
             {'fw_id': fw_id, 'state': {'$in': allowed_states}},
             {'$set': {'state': 'DEFUSED', 'updated_on': datetime.datetime.utcnow()}})
 
-        self._refresh_wf(self.get_wf_by_fw_id(fw_id), fw_id)
+        self._refresh_wf(self.get_wf_by_fw_id_lzyfw(fw_id), fw_id)
         return f
 
     def reignite_fw(self, fw_id):
@@ -549,7 +549,7 @@ class LaunchPad(FWSerializable):
                                            {'$set': {'state': 'WAITING',
                                                      'updated_on': datetime.datetime.utcnow()}})
         if f:
-            self._refresh_wf(self.get_wf_by_fw_id(fw_id), fw_id)
+            self._refresh_wf(self.get_wf_by_fw_id_lzyfw(fw_id), fw_id)
         return f
 
     def defuse_wf(self, fw_id):
@@ -557,23 +557,23 @@ class LaunchPad(FWSerializable):
         for fw in wf.fws:
             self.defuse_fw(fw.fw_id)
 
-        self._refresh_wf(self.get_wf_by_fw_id(fw_id), fw_id)
+        self._refresh_wf(self.get_wf_by_fw_id_lzyfw(fw_id), fw_id)
 
     def reignite_wf(self, fw_id):
-        wf = self.get_wf_by_fw_id(fw_id)
+        wf = self.get_wf_by_fw_id_lzyfw(fw_id)
         for fw in wf.fws:
             self.reignite_fw(fw.fw_id)
 
     def archive_wf(self, fw_id):
         # first archive all the launches, so they are not used in duplicate checks
-        wf = self.get_wf_by_fw_id(fw_id)
+        wf = self.get_wf_by_fw_id_lzyfw(fw_id)
         if wf.state != 'ARCHIVED':
             fw_ids = [f.fw_id for f in wf.fws]
             for fw_id in fw_ids:
                 self.rerun_fw(fw_id)
 
             # second set the state of all FWs to ARCHIVED
-            wf = self.get_wf_by_fw_id(fw_id)
+            wf = self.get_wf_by_fw_id_lzyfw(fw_id)
             for fw in wf.fws:
                 self.fireworks.find_and_modify({'fw_id': fw.fw_id},
                                                {'$set': {'state': 'ARCHIVED',
@@ -722,7 +722,7 @@ class LaunchPad(FWSerializable):
 
         for fw_data in self.fireworks.find({'launches': launch_id}, {'fw_id': 1}):
             fw_id = fw_data['fw_id']
-            wf = self.get_wf_by_fw_id(fw_id)
+            wf = self.get_wf_by_fw_id_lzyfw(fw_id)
             self._refresh_wf(wf, fw_id)
 
     def detect_lostruns(self, expiration_secs=RUN_EXPIRATION_SECS, fizzle=False, rerun=False, max_runtime=None, min_runtime=None):

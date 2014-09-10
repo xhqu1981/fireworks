@@ -965,6 +965,7 @@ class Workflow(FWSerializable):
 
         fw.state = m_state
         # Added by Bharat
+        # Brings self.fw_states in sync with fw_states in db
         self.fw_states[fw_id] = m_state
 
         if m_state != prev_state:
