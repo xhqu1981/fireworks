@@ -255,7 +255,7 @@ class LazyFirework(object):
                 for a in ga('_fw_launch_attrs'):
                     data = list(self._launch_coll.find(
                         {'launch_id': {"$in": ga('_launch_data')[a]}}))
-                    setattr(fw, a, map(Launch.from_dict,data))
+                    setattr(fw, a, list(map(Launch.from_dict,data)))
             sa('_launch_data', None)  # don't fetch again
 
 
