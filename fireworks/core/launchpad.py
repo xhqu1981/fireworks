@@ -234,6 +234,7 @@ class LaunchPad(FWSerializable):
 
         # sets the root FWs as READY
         # prefer to wf.refresh() for speed reasons w/many root FWs
+        # Bharat to AJ: May have to call wf.refresh() because fw state is modified
         for fw_id in wf.root_fw_ids:
             wf.id_fw[fw_id].state = 'READY'
 
@@ -268,6 +269,7 @@ class LaunchPad(FWSerializable):
         :param fw_id: FireWork id (int)
         :return: FireWork object
         """
+        # Bharat Note: LazyFirework can be used in place of Firework
         m_timer.start("get_fw_by_id")
         fw_dict = self.fireworks.find_one({'fw_id': fw_id})
 
@@ -380,6 +382,7 @@ class LaunchPad(FWSerializable):
         Returns:
             (dict) of information about Workflow.
         """
+        # Bharat Note: This may be redundant once Workflow with LazyFireworks is used
         wf_fields = ["state", "created_on", "name", "nodes"]
         fw_fields = ["state", "fw_id"]
         launch_fields = []
@@ -553,7 +556,7 @@ class LaunchPad(FWSerializable):
         return f
 
     def defuse_wf(self, fw_id):
-        wf = self.get_wf_by_fw_id(fw_id)
+        wf = self.get_wf_by_fw_id_lzyfw(fw_id)
         for fw in wf.fws:
             self.defuse_fw(fw.fw_id)
 
@@ -602,7 +605,7 @@ class LaunchPad(FWSerializable):
             return True
 
         self._upsert_fws([m_fw])  # update the DB with the new launches
-        self._refresh_wf(self.get_wf_by_fw_id(m_fw.fw_id),
+        self._refresh_wf(self.get_wf_by_fw_id_lzyfw(m_fw.fw_id),
                          m_fw.fw_id)  # since we updated a state, we need to refresh the WF again
 
         return False
@@ -643,6 +646,9 @@ class LaunchPad(FWSerializable):
                 return None
 
             m_fw = self.get_fw_by_id(m_fw['fw_id'])
+            if checkout:
+                self._refresh_wf(self.get_wf_by_fw_id_lzyfw(m_fw.fw_id),
+                                 m_fw.fw_id)  # since we updated a state, we need to refresh the WF again
             if self._check_fw_for_uniqueness(m_fw):
                 m_timer.stop("_get_a_fw_to_run")
                 return m_fw
@@ -823,6 +829,8 @@ class LaunchPad(FWSerializable):
 
         m_fw.state = 'RUNNING'
         self._upsert_fws([m_fw])
+        self._refresh_wf(self.get_wf_by_fw_id_lzyfw(m_fw.fw_id),
+                         m_fw.fw_id)
 
         # update any duplicated runs
         for fw in self.fireworks.find(
@@ -832,6 +840,7 @@ class LaunchPad(FWSerializable):
             fw = self.get_fw_by_id(fw_id)
             fw.state = 'RUNNING'
             self._upsert_fws([fw])
+            self._refresh_wf(self.get_wf_by_fw_id_lzyfw(m_fw.fw_id), m_fw.fw_id)
 
         self.m_logger.debug('Checked out FW with id: {}'.format(m_fw.fw_id))
 

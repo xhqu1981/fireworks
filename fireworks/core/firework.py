@@ -922,7 +922,7 @@ class Workflow(FWSerializable):
 
         # if we're defused or archived, just skip altogether
         if fw.state == 'DEFUSED' or fw.state == 'ARCHIVED':
-            self.fw_states[fw_id] = prev_state
+            self.fw_states[fw_id] = fw.state
             m_timer.stop("Workflow.refresh", fw_id=fw_id)
             return updated_ids
 
