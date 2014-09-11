@@ -30,7 +30,7 @@ from fireworks.utilities.fw_serializers import FWSerializable, \
 from fireworks.utilities.fw_utilities import get_my_host, get_my_ip, \
     NestedClassGetter
 from fireworks.utilities import timing
-from fireworks.utilities.lazy import Lazy
+from fireworks.utilities.lazy import Lazy, get_external_attrs
 
 __author__ = "Anubhav Jain"
 __credits__ = "Shyue Ping Ong"
@@ -402,18 +402,24 @@ class FireWork(FWSerializable):
 class LazyFirework(Lazy):
     """
     Delayed instantiation of a FireWork from the database.
+
+    Note: getting attributes is not special, but to set an attribute
+    use the custom `self._set(name, value)` method, to avoid loops with the
+    overridden `__setattr__` method.
     """
 
-    watch_attrs = ('state', 'spec', 'launches', 'archived_launches',
-                   'name', 'created_on', 'to_dict', 'to_db_dict', '_rerun')
+    # Introspect attrs to watch. This means that if you add a new attribute
+    # to FireWork, it will automatically be added to this list.
+    watch_attrs = get_external_attrs(FireWork)
 
     # Get only these fields when creating new FireWork object
     init_fields = ('name', 'fw_id', 'spec', 'created_on')
 
     def __init__(self, fw_id, fw_coll, launch_coll):
         Lazy.__init__(self)
-        self.fw_id = fw_id
-        self._fw_coll, self._launch_coll = fw_coll, launch_coll
+        self._set('fw_id', fw_id)
+        self._set('_fw_coll', fw_coll)
+        self._set('_launch_coll', launch_coll)
 
     def _instantiate(self, name):
         data = self._fw_coll.find_one({'fw_id': self.fw_id},
@@ -436,11 +442,12 @@ class _LazyFireworkLaunches(Lazy):
 
     def __init__(self, fw, copy_attrs, fw_coll, launch_coll):
         Lazy.__init__(self)
-        self._fw = fw
-        self._fw_coll, self._launch_coll = fw_coll, launch_coll
+        self._set('_fw', fw)
+        self._set('_fw_coll', fw_coll)
+        self._set('_launch_coll', launch_coll)
         # Copy attrs, so that this instance will act as a FireWork
         for a in copy_attrs:
-            self.__dict__[a] = getattr(fw, a)
+            self._set(a, getattr(fw, a))
 
     def _instantiate(self, name):
         """
@@ -451,14 +458,14 @@ class _LazyFireworkLaunches(Lazy):
         launch_ids = rec[name]
         if not launch_ids:
             # Stop if the list is empty
-            self.__dict__[name] = []  # set to empty
+            self._set('name', [])  # set to empty
         else:
             # Find launch data for each id
             cur = self._launch_coll.find({'launch_id': {"$in": launch_ids}})
             # Build a Launch object for each launch datum
             launch_list = [Launch.from_dict(launch_data) for launch_data in cur]
             # Copy launch objects into self, so it will no longer trigger
-            self.__dict__[name] = launch_list
+            self._set('name', launch_list)
         return None  # do not unwrap
 
 class Tracker(FWSerializable, object):
