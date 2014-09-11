@@ -155,7 +155,7 @@ def main():
 
     # Print out timers if any
     if timing.any_fw_timers():
-        print("Timers\n-------")
+        #print("Timers\n-------")
         timing.print_fw_timers()
 
     return 0
