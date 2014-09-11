@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 """
 A Rocket fetches a FireWork from the database, runs the sequence of FireTasks inside, and then completes the Launch
 """
@@ -161,6 +159,7 @@ class Rocket():
         if PRINT_FW_YAML:
             m_fw.to_file('FW.yaml')
 
+        m_timer.stop("rocket.run", **ids)
         try:
             my_spec = dict(m_fw.spec)  # make a copy of spec, don't override original
             my_spec["_fw_env"] = self.fworker.env
@@ -205,6 +204,7 @@ class Rocket():
                 if m_action.skip_remaining_tasks:
                     break
 
+            m_timer.start("rocket.run.finish")
             # add job packing info if this is needed
             if FWData().MULTIPROCESSING and STORE_PACKING_INFO:
                 all_stored_data['multiprocess_name'] = multiprocessing.current_process().name
@@ -224,6 +224,7 @@ class Rocket():
             m_action.stored_data = all_stored_data
             m_action.mod_spec = all_mod_spec
             m_action.update_spec = all_update_spec
+            m_timer.stop("rocket.run.finish")
 
             if lp:
                 lp.complete_launch(launch_id, m_action, 'COMPLETED')
@@ -242,6 +243,7 @@ class Rocket():
 
         except:
             stop_backgrounds(ping_stop, btask_stops)
+            do_ping(lp, launch_id)  # one last ping, esp if there is a monitor
             traceback.print_exc()
             try:
                 m_action = FWAction(stored_data={'_message': 'runtime error during task', '_task': t.to_dict(),
