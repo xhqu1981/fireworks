@@ -165,6 +165,9 @@ class LaunchPadDefuseReigniteRerunArchiveDeleteTest(unittest.TestCase):
                              fw_c3,fw_c4,fw_c5,fw_c6,fw_c7,fw_c8])
         self.lp.add_wf(workflow)
 
+        # XXX DEBUG
+        #time.sleep(100)
+
         # Give names to fw_ids
         self.zeus_fw_id = 2
         self.zeus_child_fw_ids = set([7,8,9,11,14])
@@ -183,7 +186,7 @@ class LaunchPadDefuseReigniteRerunArchiveDeleteTest(unittest.TestCase):
         if os.path.exists(os.path.join('FW.json')):
             os.remove('FW.json')
         os.chdir(self.old_wd)
-        for ldir in glob.glob(os.path.join(MODULE_DIR,"launcher_*")):
+        for ldir in glob.glob(os.path.join(MODULE_DIR, "launcher_*")):
             shutil.rmtree(ldir)
 
     def _teardown(self, dests):
@@ -240,8 +243,8 @@ class LaunchPadDefuseReigniteRerunArchiveDeleteTest(unittest.TestCase):
         rapidfire(self.lp, self.fworker,m_dir=MODULE_DIR)
 
         # Check for the status of Zeus and children in completed fwids
-        completed_ids = set(self.lp.get_fw_ids({'state':'COMPLETED'}))
-        self.assertIn(self.zeus_fw_id,completed_ids)
+        completed_ids = set(self.lp.get_fw_ids({'state': 'COMPLETED'}))
+        self.assertIn(self.zeus_fw_id, completed_ids)
         self.assertTrue(self.zeus_child_fw_ids.issubset(completed_ids))
 
     def test_defuse_wf(self):
@@ -325,8 +328,14 @@ class LaunchPadDefuseReigniteRerunArchiveDeleteTest(unittest.TestCase):
 
     def test_rerun_fws2(self):
         # Launch all fireworks
-        rapidfire(self.lp, self.fworker,m_dir=MODULE_DIR)
+        rapidfire(self.lp, self.fworker, m_dir=MODULE_DIR)
         fw = self.lp.get_fw_by_id(self.zeus_fw_id)
+# orig        first_ldir = fw.launches[0].launch_dir
+# new
+        print("@@ fw class={}".format(fw.__class__.__name__))
+        lnch = fw.launches
+        print("@@LAUNCHES: {}".format(lnch))
+#end: new
         first_ldir = fw.launches[0].launch_dir
         ts = datetime.datetime.utcnow()
 

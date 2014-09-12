@@ -6,6 +6,8 @@ __credits__ = "Bharat Medasani, Anubhav Jain"
 __copyright__ = "Copyright 2014, The Materials Project"
 __date__ = "11 Sep 2014"
 
+import traceback # debug
+
 
 def get_external_attrs(cls):
     """
@@ -34,70 +36,51 @@ class Lazy(object):
     watch_attrs = ()
 
     def __init__(self):
+        #traceback.print_stack()
+        self.__dict__['__isset'] = set()
         self._set('_obj', None)
 
     def _instantiate(self, name):
         pass
 
     def _set(self, name, value):
+        #print("@@ SET {} on {}".format(name, self.__class__.__name__))
         self.__dict__[name] = value
+        self.__dict__['__isset'].add(name)
 
     def __getattr__(self, name):
-        if not self._obj:
-            if name in self.watch_attrs:
-                obj = self._instantiate(name)
-                if obj:
-                    self._set('_obj', obj)
-                else:
-                    return getattr(self, name)  # try again
+        #print("@@ getattr {} on {}".format(name, self.__class__.__name__))
+        if self._obj:
+            #print("@@ {}: in obj".format(name))
+            return getattr(self._obj, name)
+        #print("@@ {}: NO obj".format(name))
+        if name in self.watch_attrs:
+            obj = self._instantiate(name)
+            if obj:
+                self._set('_obj', obj)
+                return getattr(obj, name)
             else:
-                raise AttributeError(name)
-        return getattr(self._obj, name)
+                return getattr(self, name)  # try again
+        elif name in self.__dict__['__isset']:
+            #print("@@ -- already set")
+            return self.__dict__[name]
+        else:
+            raise AttributeError(self.__class__.__name__ + ":" + name)
 
     def __setattr__(self, name, value):
-        if not self._obj:
-            if name in self.watch_attrs:
-                obj = self._instantiate(name)
-                if obj:
-                    self._set('_obj', obj)
-                else:
-                    setattr(self, name, value)  # try again
+        if self._obj:
+            setattr(self._obj, name, value)
+            return
+        if name in self.watch_attrs:
+            #print("@@ -- watched")
+            obj = self._instantiate(name)
+            if obj:
+                setattr(obj, name, value)
+                self._set('_obj', obj)
             else:
-                raise AttributeError(name)  # no monkey-patching
-        setattr(self._obj, name, value)
-
-    def _unwatch(self, name):
-        obj = self._instantiate(name)
-        if obj:
-            self._set('_obj', obj)
+                setattr(self, name, value)  # try again
+        elif name in self.__dict__['__isset']:
+            #print("@@ -- already set")
+            self.__dict__[name] = value
         else:
-            return getattr(self, name)  # try again
-
-
-def main():
-
-    class Real(object):
-        def __init__(self):
-            print("init Real")
-            self.bar = 2
-            self.foo = 3
-
-    class L(Lazy):
-        watch_attrs = ('foo', 'bar')
-
-        def _instantiate(self, name):
-            print("attribute {}".format(name))
-            if name == 'foo':
-                self._set('foo', 1)
-                return None
-            else:
-                return Real()
-
-    lz = L()
-    print("foo = {}".format(lz.foo))
-    print("bar = {}".format(lz.bar))
-    print("bar = {}".format(lz.bar))
-    print("foo = {}".format(lz.foo))
-
-if __name__ == '__main__':
-    main()
+            raise AttributeError(self.__class__.__name__ + ":" + name)

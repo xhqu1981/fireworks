@@ -38,7 +38,7 @@ def launch_rocket(launchpad, fworker=None, fw_id=None, strm_lvl='INFO'):
     rocket = Rocket(launchpad, fworker, fw_id)
     rocket_ran = rocket.run()
     m_timer.stop("launch_rocket", launchpad=id(launchpad))
-    log_multi(l_logger, 'Rocket finished')
+    log_multi(l_logger, 'Rocket finished. ran={}'.format(rocket_ran))
     return rocket_ran
 
 
@@ -73,6 +73,9 @@ def rapidfire(launchpad, fworker=None, m_dir=None, nlaunches=0, max_loops=-1, sl
             launcher_dir = create_datestamp_dir(curdir, l_logger, prefix='launcher_')
             os.chdir(launcher_dir)
             rocket_ran = launch_rocket(launchpad, fworker, strm_lvl=strm_lvl)
+            ## xxx: debug
+            if not rocket_ran:
+                log_multi(l_logger, "Rocket did NOT run")
             if rocket_ran:
                 num_launched += 1
             elif not os.listdir(launcher_dir):
@@ -82,8 +85,10 @@ def rapidfire(launchpad, fworker=None, m_dir=None, nlaunches=0, max_loops=-1, sl
             if num_launched == nlaunches:
                 m_timer.stop("rapidfire-launch")
                 break
-            #time.sleep(0.15)  # add a small amount of buffer breathing time for DB to refresh, etc.
+            time.sleep(0.15)  # add a small amount of buffer breathing time for DB to refresh, etc.
             m_timer.stop("rapidfire-launch")
+            # xxx:
+            log_multi(l_logger, "run exists: {}".format(launchpad.run_exists(fworker)))
         if num_launched == nlaunches or nlaunches == 0:
             break
         log_multi(l_logger, 'Sleeping for {} secs'.format(sleep_time))

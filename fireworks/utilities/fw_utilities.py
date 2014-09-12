@@ -217,3 +217,10 @@ class NestedClassGetter(object):
 def explicit_serialize(o):
     o._fw_name = '{{%s.%s}}' % (o.__module__, o.__name__)
     return o
+
+
+def dict_move(d1, d2, keys):
+    for key in keys:
+        d2[key] = d1[key]
+    for key in keys:
+        del d1[key]
