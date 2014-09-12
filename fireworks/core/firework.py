@@ -303,7 +303,7 @@ class FireWork(FWSerializable):
         fw_id = m_dict.get('fw_id', -1)
         state = m_dict.get('state', 'WAITING')
         created_on = m_dict.get('created_on')
-        updated_on = m_dict.get('updated_on') # XXX: Not used
+        updated_on = m_dict.get('updated_on')  # XXX: Not used
         name = m_dict.get('name', None)
 
         fw = FireWork(tasks, m_dict['spec'], name, launches, archived_launches,
@@ -331,6 +331,7 @@ class _LazyLaunches(Lazy):
         if not 'state' in copy_attrs:
             raise KeyError("Missing 'state'")
         Lazy.__init__(self)
+        # save params
         self._set('_fw', fw)
         self._set('_fwc', fw_coll)
         self._set('_lc', launch_coll)
@@ -340,13 +341,13 @@ class _LazyLaunches(Lazy):
             self._set(a, getattr(fw, a))
 
     def _instantiate(self, name):
-        # Get launch ids from passed-in values
+        # Get launch ids from params
         launch_ids = self._ldata[name]
         # Build launch objects
         launches = [] if not launch_ids else map(
             Launch.from_dict,
             self._lc.find({'launch_id': {"$in": launch_ids}}))
-        # Copy launch objects into self, so it will no longer trigger
+        # Copy launch objects into self
         self._set(name, launches)
         return None  # do not unwrap
 
@@ -361,8 +362,7 @@ class LazyFirework(Lazy):
     """
 
     # Instantiate from DB on access to these attributes
-    watch_attrs = ['tasks', 'spec', 'state', 'parents', 'created_on',
-                   'updated_on'] + list(_LazyLaunches.watch_attrs)
+    watch_attrs = get_external_attrs(FireWork([]))
 
     # Get these fields from DB when creating new FireWork object
     db_fields = ('name', 'fw_id', 'spec', 'created_on')
