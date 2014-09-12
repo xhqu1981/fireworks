@@ -58,12 +58,12 @@ def insert_result(db, action, tasks, workflows, deps, t0, t1):
 
 
 def load(bench, tasks, workflows, deps, db):
-    bench.log.info("scaling.load.start tasks={:d} workflows={:d}"
-                   .format(tasks, workflows))
+    bench.log.info("scaling.load.start tasks={:d} workflows={:d} deps={}"
+                   .format(tasks, workflows, deps))
     t0 = time.time()
     # load 'workflows' workflows with 'tasks' tasks in each
     for _ in xrange(workflows):
-        bench.load(bench.get_workflow(tasks))
+        bench.load(bench.get_workflow(tasks, deps=deps))
     t1 = time.time()
     insert_result(db, 'load', tasks, workflows, deps, t0, t1)
     bench.log.info("scaling.load.end")
@@ -87,7 +87,7 @@ def main():
     ap.add_argument("--tasks", dest="tasks", type=int, default='1',
                     help="Number of tasks per workflow")
     ap.add_argument("--type", dest="type", default="sequence",
-                    help="Workflow type (sequence, reduce, complex)")
+                    help="Workflow type (parallel, sequence, reduce, complex)")
     ap.add_argument("--workflows", dest="workflows", type=int, default='1',
                     help="Number of workflows")
     ap.add_argument("--reset", dest="reset", action="store_true",

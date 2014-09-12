@@ -83,9 +83,10 @@ class Benchmark(object):
     def load(self, wf):
         self.log.info("bench.load.start")
         load_t = time.time()
-        self.lpad.add_wf(wf)
+        old_new = self.lpad.add_wf(wf)
         load_t = time.time() - load_t
         self.log.info("bench.load.end")
+        print("OLD/NEW mapping: {}".format(old_new))
         return load_t
 
     def run(self, np):
@@ -126,7 +127,8 @@ class Benchmark(object):
         :type n: int, >= 1
         :param task_class: Task class or use self.task_class
         :param deps: Type of dependencies
-            "sequence" -  No dependencies between tasks.
+            "parallel" -  No dependencies between tasks.
+            "sequence" -  Each task depends on the previous one
             "reduce"   -  The last task depends on all previous ones.
             "complex"  -  Dependencies are structured so that the second task
                           depends on the first, and every task after the second
@@ -139,25 +141,26 @@ class Benchmark(object):
             task_class = self.task_class
         tasks = [task_class() for _ in xrange(n)]
         fireworks = [FireWork(tasks[i], fw_id=i) for i in xrange(n)]
-        if deps == "sequence":
-            _deps = {}
+        links = {}
+        self.log.debug("Getting {:d} workflows of type {}".format(n, deps))
+        if deps == "parallel":
+            pass
+        elif deps == "sequence":
+            for i in xrange(1, n):
+                links[i] = i - 1
         elif deps == "reduce":
-            if n == 1:
-                _deps = {}
-            else:
-                _deps = {n - 1: range(n - 1)}
+            if n > 1:
+                for i in xrange(1, n):
+                    links[i] = [0]
         elif deps == "complex":
-            if n == 1:
-                _deps = {}
-            elif n == 2:
-                _deps = {0: [1]}
-            else:
-                _deps = {}
+            if n == 2:
+                links = {0: [1]}
+            elif n > 2:
                 for i in xrange(n - 2):
-                    _deps[i] = [i+1, i+2]
-                _deps[n - 2] = [n - 1]
+                    links[i] = [i+1, i+2]
+                links[n - 2] = [n - 1]
         else:
             raise ValueError("Bad value for 'deps': {}".format(deps))
-        workflow = Workflow(fireworks, _deps)
+        workflow = Workflow(fireworks, links)
         return workflow
 
