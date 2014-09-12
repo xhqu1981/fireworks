@@ -40,7 +40,7 @@ def get_fw_logger(name, l_dir=None, file_levels=('DEBUG', 'ERROR'),
     """
 
     logger = logging.getLogger(name)
-    logger.setLevel(logging.DEBUG)  # anything debug and above passes through to the handler level
+    #logger.setLevel(logging.DEBUG)  # anything debug and above passes through to the handler level
 
     stream_level = stream_level if stream_level else 'CRITICAL'
     # add handlers for the file_levels
@@ -156,6 +156,7 @@ def create_datestamp_dir(root_dir, l_logger, prefix='block_'):
 
 _g_ip, _g_host = None, None
 
+
 def get_my_ip():
     global _g_ip
     if _g_ip is None:
@@ -217,3 +218,16 @@ class NestedClassGetter(object):
 def explicit_serialize(o):
     o._fw_name = '{{%s.%s}}' % (o.__module__, o.__name__)
     return o
+
+
+def dict_move(d1, d2, keys):
+    for key in keys:
+        d2[key] = d1[key]
+    for key in keys:
+        del d1[key]
+
+
+def dict_extract(d1, keys):
+    d2 = {}
+    dict_move(d1, d2, keys)
+    return d2

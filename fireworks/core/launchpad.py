@@ -346,7 +346,7 @@ class LaunchPad(FWSerializable):
         m_timer.stop("get_lazywf_by_fw_id", fw_id=fw_id,)
 
         return Workflow(fws, links_dict['links'], links_dict['name'],
-                        links_dict['metadata'],fw_states=fw_states)
+                        links_dict['metadata'], fw_states=fw_states)
 
     def delete_wf(self, fw_id):
         links_dict = self.workflows.find_one({'nodes': fw_id})
@@ -561,6 +561,7 @@ class LaunchPad(FWSerializable):
             self.defuse_fw(fw.fw_id)
 
         self._refresh_wf(self.get_wf_by_fw_id_lzyfw(fw_id), fw_id)
+        #self._refresh_wf(self.get_wf_by_fw_id(fw_id), fw_id)
 
     def reignite_wf(self, fw_id):
         wf = self.get_wf_by_fw_id_lzyfw(fw_id)
@@ -864,7 +865,8 @@ class LaunchPad(FWSerializable):
         m_launch = self.get_launch_by_id(launch_id)
         m_launch.state = state
         m_launch.action = action
-        self.launches.find_and_modify({'launch_id': m_launch.launch_id}, m_launch.to_db_dict(), upsert=True)
+        self.launches.find_and_modify({'launch_id': m_launch.launch_id},
+                                      m_launch.to_db_dict(), upsert=True)
         m_timer.stop("launchpad.complete_launch1", launch_id=launch_id)
 
         # find all the fws that have this launch
@@ -873,6 +875,7 @@ class LaunchPad(FWSerializable):
             fw_id = fw['fw_id']
             with WFLock(self, fw_id):
                 self._refresh_wf(self.get_wf_by_fw_id_lzyfw(fw_id), fw_id)
+                #self._refresh_wf(self.get_wf_by_fw_id(fw_id), fw_id)
         # change return type to dict to make return type seriazlizable to
         # support job packing
         m_timer.stop("launchpad.complete_launch2", launch_id=launch_id)
@@ -916,7 +919,8 @@ class LaunchPad(FWSerializable):
                 new_id = self.get_new_fw_id()
                 old_new[fw.fw_id] = new_id
                 fw.fw_id = new_id
-            self.fireworks.find_and_modify({'fw_id': fw.fw_id}, fw.to_db_dict(), upsert=True)
+            self.fireworks.find_and_modify({'fw_id': fw.fw_id}, fw.to_db_dict(),
+                                           upsert=True)
 
         return old_new
 
@@ -962,10 +966,6 @@ class LaunchPad(FWSerializable):
         # TODO: time how long it took to refresh the WF!
         # TODO: need a try-except here, high probability of failure if incorrect action supplied
         updated_ids = wf.refresh(fw_id)
-        #print(wf.fw_states)
-        #print wf.id_fw.keys()
-        #print wf.state
-        #print ('updated ids in _refresh_wf', updated_ids)
         self._update_wf(wf, updated_ids)
         m_timer.stop("launchpad._refresh_wf", fw_id=fw_id)
 

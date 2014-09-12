@@ -38,7 +38,7 @@ def launch_rocket(launchpad, fworker=None, fw_id=None, strm_lvl='INFO'):
     rocket = Rocket(launchpad, fworker, fw_id)
     rocket_ran = rocket.run()
     m_timer.stop("launch_rocket", launchpad=id(launchpad))
-    log_multi(l_logger, 'Rocket finished')
+    log_multi(l_logger, 'Rocket finished (ran={})'.format(rocket_ran))
     return rocket_ran
 
 
@@ -68,6 +68,10 @@ def rapidfire(launchpad, fworker=None, m_dir=None, nlaunches=0, max_loops=-1, sl
 
     while num_loops != max_loops:
         while launchpad.run_exists(fworker):
+
+            #print("====== BEFORE =======")
+            #_dump_db(launchpad.fireworks)
+
             m_timer.start("rapidfire-launch")
             os.chdir(curdir)
             launcher_dir = create_datestamp_dir(curdir, l_logger, prefix='launcher_')
@@ -82,8 +86,12 @@ def rapidfire(launchpad, fworker=None, m_dir=None, nlaunches=0, max_loops=-1, sl
             if num_launched == nlaunches:
                 m_timer.stop("rapidfire-launch")
                 break
-            #time.sleep(0.15)  # add a small amount of buffer breathing time for DB to refresh, etc.
+            time.sleep(0.15)  # add a small amount of buffer breathing time for DB to refresh, etc.
             m_timer.stop("rapidfire-launch")
+
+            #print("====== AFTER =======")
+            #_dump_db(launchpad.fireworks)
+
         if num_launched == nlaunches or nlaunches == 0:
             break
         log_multi(l_logger, 'Sleeping for {} secs'.format(sleep_time))
@@ -92,3 +100,10 @@ def rapidfire(launchpad, fworker=None, m_dir=None, nlaunches=0, max_loops=-1, sl
         log_multi(l_logger, 'Checking for FWs to run...'.format(sleep_time))
 
     m_timer.stop("rapidfire")
+
+
+def _dump_db(coll):
+    cursor = coll.find({})
+    for rec in cursor:
+        print(rec)
+        print("--")
