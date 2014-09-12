@@ -142,15 +142,6 @@ class MessageBoard(object):
         return len(self.messages)
 
 
-class MyFireWork(FW.FireWork):
-    @classmethod
-    def from_dict(cls, d):
-        return MyFireWork([], spec={})
-
-    def hello(self, mb):
-        mb.post("MyFireWork", "hello")
-
-
 class MainTestCase(unittest.TestCase):
 
     def setUp(self):

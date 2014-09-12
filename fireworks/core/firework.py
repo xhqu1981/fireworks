@@ -326,7 +326,7 @@ class LazyFirework(object):
         self.fw_id = fw_id
 
         self._fwc, self._lc = fw_coll, launch_coll
-        self._launches = {k: None for k in self.db_launch_fields}
+        self._launches = {k: False for k in self.db_launch_fields}
         self._fw, self._lids = None, None
 
     # FireWork methods
@@ -344,7 +344,7 @@ class LazyFirework(object):
         return self.full_fw.to_dict()
 
     def _rerun(self):
-        return self.full_fw._rerun()
+        self.full_fw._rerun()
 
     def to_db_dict(self):
         return self.full_fw.to_db_dict()
@@ -392,7 +392,7 @@ class LazyFirework(object):
         return self._get_launch_data('launches')
     @launches.setter
     def launches(self, value):
-        self._launches['launches'] = value
+        self._launches['launches'] = True
         self.partial_fw.launches = value
 
     @property
@@ -400,7 +400,7 @@ class LazyFirework(object):
         return self._get_launch_data('archived_launches')
     @archived_launches.setter
     def archived_launches(self, value):
-        self._launches['archived_launches'] = value
+        self._launches['archived_launches'] = True
         self.partial_fw.archived_launches = value
 
     # Lazy properties that idempotently instantiate a FireWork object
@@ -428,7 +428,7 @@ class LazyFirework(object):
         :return: Launch obj (also propagated to self._fw)
         """
         fw = self.partial_fw  # assure stage 1
-        if self._launches[name] is None:
+        if not self._launches[name]:
             launch_ids = self._lids[name]
             if launch_ids:
                 data = self._lc.find({'launch_id': {"$in": launch_ids}})
@@ -436,8 +436,8 @@ class LazyFirework(object):
             else:
                 result = []
             setattr(fw, name, result)  # put into real FireWork obj
-            self._launches[name] = result  # also, remember
-        return self._launches[name]
+            self._launches[name] = True
+        return getattr(fw, name)
 
 
 class Tracker(FWSerializable, object):
