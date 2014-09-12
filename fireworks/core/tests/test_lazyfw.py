@@ -22,7 +22,7 @@ g_fw = {1: {
     "fw_id": 1,
     "name": "Unnamed FW",
     "launches": [1],
-    "archived_launches": [],
+    "archived_launches": [1],
     "state": "COMPLETED",
     "created_on": "2014-09-02T19:54:46.241519",
     "spec": {
@@ -173,14 +173,14 @@ class MainTestCase(unittest.TestCase):
     def test_lazyfw_get_method(self):
         fw = FW.LazyFirework(1, self.fw_coll, self.l_coll)
         _ = fw._rerun
-        # causes instantiation, thus first query
-        self.assertEquals(len(self.mb), 1)
-        # when called, accesses launches & thus 2nd query
+        # no instantiation
+        self.assertEquals(len(self.mb), 0)
+        # when called, accesses fw + launches & thus 3 queries
         _ = fw._rerun()
-        self.assertEquals(len(self.mb), 2)
+        self.assertEquals(len(self.mb), 3)
         # no more queries
         _ = fw._rerun()
-        self.assertEquals(len(self.mb), 2)
+        self.assertEquals(len(self.mb), 3)
 
     def test_lazyfw_set_attr(self):
         fw_id = 1
@@ -198,26 +198,23 @@ class MainTestCase(unittest.TestCase):
         # 2 queries
         self.assertEquals(len(self.mb), 2)
         r2 = fw.archived_launches
-        # no more queries, since empty list
-        self.assertEquals(len(self.mb), 2)
+        # 1 more query
+        self.assertEquals(len(self.mb), 3)
 
     def test_lazylaunches_set_attr(self):
         fw_id = 1
         fw1 = g_fw[fw_id]
         fw = FW.LazyFirework(1, self.fw_coll, self.l_coll)
         fw.launches = [1, 2, 3]
-        self.assertEquals(len(self.mb), 2)
-        fw.launches = [1, 2, 3]
+        # queries to create shallow FW
+        self.assertEquals(len(self.mb), 1)
+        x = fw.launches
+        # no query for the launch data
+        self.assertEquals(len(self.mb), 1)
+        # this one requires a query now
+        x = fw.archived_launches
         self.assertEquals(len(self.mb), 2)
 
-    def test_alt_class(self):
-        fw = FW.LazyFirework(1, self.fw_coll, self.l_coll, cls=MyFireWork)
-        self.assertEquals(len(self.mb), 0)
-        _ = fw.state
-        self.assertEquals(len(self.mb), 1)
-        _ = fw.hello(self.mb)
-        self.assertEquals(len(self.mb), 2)
-        self.assertEquals(self.mb.last(), "hello")
 
 if __name__ == '__main__':
     unittest.main()

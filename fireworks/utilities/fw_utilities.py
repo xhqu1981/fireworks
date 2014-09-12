@@ -40,7 +40,7 @@ def get_fw_logger(name, l_dir=None, file_levels=('DEBUG', 'ERROR'),
     """
 
     logger = logging.getLogger(name)
-    logger.setLevel(logging.DEBUG)  # anything debug and above passes through to the handler level
+    #logger.setLevel(logging.DEBUG)  # anything debug and above passes through to the handler level
 
     stream_level = stream_level if stream_level else 'CRITICAL'
     # add handlers for the file_levels
@@ -155,6 +155,7 @@ def create_datestamp_dir(root_dir, l_logger, prefix='block_'):
 
 
 _g_ip, _g_host = None, None
+
 
 def get_my_ip():
     global _g_ip

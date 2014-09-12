@@ -165,9 +165,6 @@ class LaunchPadDefuseReigniteRerunArchiveDeleteTest(unittest.TestCase):
                              fw_c3,fw_c4,fw_c5,fw_c6,fw_c7,fw_c8])
         self.lp.add_wf(workflow)
 
-        # XXX DEBUG
-        #time.sleep(100)
-
         # Give names to fw_ids
         self.zeus_fw_id = 2
         self.zeus_child_fw_ids = set([7,8,9,11,14])
@@ -198,16 +195,19 @@ class LaunchPadDefuseReigniteRerunArchiveDeleteTest(unittest.TestCase):
         # defuse Zeus
         self.lp.defuse_fw(self.zeus_fw_id)
 
-        defused_ids = self.lp.get_fw_ids({'state':'DEFUSED'})
+        defused_ids = self.lp.get_fw_ids({'state': 'DEFUSED'})
         self.assertIn(self.zeus_fw_id, defused_ids)
         try:
             # Launch remaining fireworks
-            rapidfire(self.lp, self.fworker,m_dir=MODULE_DIR)
+            rapidfire(self.lp, self.fworker, m_dir=MODULE_DIR)
+            #_dump_db(self.lp.fireworks)
 
             # Ensure except for Zeus and his children, all other fw are launched
-            completed_ids = set(self.lp.get_fw_ids({'state':'COMPLETED'}))
-            # Check that Lapetus and his descendants are subset of  completed fwids
-            self.assertTrue(self.lapetus_desc_fw_ids.issubset(completed_ids))
+            completed_ids = set(self.lp.get_fw_ids({'state': 'COMPLETED'}))
+            # Check that Lapetus and descendants are subset of completed fwids
+            self.assertTrue(self.lapetus_desc_fw_ids.issubset(completed_ids),
+                            "{} !subset {}".format(self.lapetus_desc_fw_ids,
+                                                   completed_ids))
             # Check that Zeus siblings are subset of completed fwids
             self.assertTrue(self.zeus_sib_fw_ids.issubset(completed_ids))
 
@@ -225,7 +225,7 @@ class LaunchPadDefuseReigniteRerunArchiveDeleteTest(unittest.TestCase):
         self.lp.defuse_fw(self.zeus_fw_id)
 
         defused_ids = self.lp.get_fw_ids({'state':'DEFUSED'})
-        self.assertIn(self.zeus_fw_id,defused_ids)
+        self.assertIn(self.zeus_fw_id, defused_ids)
         completed_ids = set(self.lp.get_fw_ids({'state':'COMPLETED'}))
         self.assertFalse(self.zeus_child_fw_ids.issubset(completed_ids))
 
@@ -330,12 +330,7 @@ class LaunchPadDefuseReigniteRerunArchiveDeleteTest(unittest.TestCase):
         # Launch all fireworks
         rapidfire(self.lp, self.fworker, m_dir=MODULE_DIR)
         fw = self.lp.get_fw_by_id(self.zeus_fw_id)
-# orig        first_ldir = fw.launches[0].launch_dir
-# new
-        print("@@ fw class={}".format(fw.__class__.__name__))
-        lnch = fw.launches
-        print("@@LAUNCHES: {}".format(lnch))
-#end: new
+        first_ldir = fw.launches[0].launch_dir
         first_ldir = fw.launches[0].launch_dir
         ts = datetime.datetime.utcnow()
 
@@ -423,6 +418,7 @@ class LaunchPadLostRunsDetectTest(unittest.TestCase):
 
         l, f = self.lp.detect_lostruns(2, max_runtime=-1)  # script ran more than -1 secs
         self.assertEqual((l, f), ([], []))
+
 
 
 if __name__ == '__main__':
