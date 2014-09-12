@@ -583,7 +583,7 @@ class LaunchPad(FWSerializable):
                                                {'$set': {'state': 'ARCHIVED',
                                                          'updated_on': datetime.datetime.utcnow()}})
 
-            self._refresh_wf(self.get_wf_by_fw_id(fw_id), fw_id)
+            self._refresh_wf(self.get_wf_by_fw_id_lzyfw(fw_id), fw_id)
 
     def _restart_ids(self, next_fw_id, next_launch_id):
         """
@@ -942,7 +942,7 @@ class LaunchPad(FWSerializable):
             self.m_logger.debug("Skipping rerun fw_id: {}: it is already WAITING.".format(fw_id))
         else:
             with WFLock(self, fw_id):
-                wf = self.get_wf_by_fw_id(fw_id)
+                wf = self.get_wf_by_fw_id_lzyfw(fw_id)
                 updated_ids = wf.rerun_fw(fw_id)
                 self._update_wf(wf, updated_ids)
                 reruns.append(fw_id)

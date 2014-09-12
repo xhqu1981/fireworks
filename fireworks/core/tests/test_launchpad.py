@@ -84,13 +84,13 @@ class LaunchPadTest(unittest.TestCase):
     def test_add_wf(self):
         fw = FireWork(ScriptTask.from_str('echo "hello"'), name="hello")
         self.lp.add_wf(fw)
-        wf = self.lp.get_wf_ids()
-        self.assertEqual(len(wf.id_fw.keys()), 1)  
+        wf_id = self.lp.get_wf_ids()
+        self.assertEqual(len(wf_id), 1)  
         fw2 = FireWork(ScriptTask.from_str('echo "goodbye"'), name="goodbye")
         wf = Workflow([fw, fw2], name='test_workflow')
         self.lp.add_wf(wf)
-        fw = self.lp.get_fw_ids()
-        self.assertEqual(len(wf.id_fw.keys()), 2)
+        fw_ids = self.lp.get_fw_ids()
+        self.assertEqual(len(fw_ids), 3)
         self.lp.reset('',require_password=False)
 
 
