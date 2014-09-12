@@ -234,7 +234,6 @@ class LaunchPad(FWSerializable):
 
         # sets the root FWs as READY
         # prefer to wf.refresh() for speed reasons w/many root FWs
-        # Bharat to AJ: May have to call wf.refresh() because fw state is modified
         for fw_id in wf.root_fw_ids:
             wf.id_fw[fw_id].state = 'READY'
 
@@ -287,6 +286,15 @@ class LaunchPad(FWSerializable):
         m_timer.stop("get_fw_by_id")
 
         return FireWork.from_dict(fw_dict)
+
+    def get_lzyfw_by_id(self, fw_id):
+        """
+        Given a FireWork id, give back a FireWork object
+
+        :param fw_id: FireWork id (int)
+        :return: LazyFireWork object
+        """
+        return LazyFirework(fw_id, self.fireworks, self.launches)
 
     def create_fw_from_dict(self, fw_dict):
         fw_dict['launches'] = list(self.launches.find(
@@ -936,6 +944,7 @@ class LaunchPad(FWSerializable):
             duplicates = list(set(duplicates))
         # rerun this FW
         m_fw = self.fireworks.find_one({"fw_id": fw_id}, {"state": 1})
+        print (m_fw['state'])
         if m_fw['state'] in ['ARCHIVED', 'DEFUSED'] :
             self.m_logger.info("Cannot rerun fw_id: {}: it is {}.".format(fw_id, m_fw['state']))
         elif m_fw['state'] == 'WAITING':
@@ -944,6 +953,7 @@ class LaunchPad(FWSerializable):
             with WFLock(self, fw_id):
                 wf = self.get_wf_by_fw_id_lzyfw(fw_id)
                 updated_ids = wf.rerun_fw(fw_id)
+                print ('updated_ids',updated_ids)
                 self._update_wf(wf, updated_ids)
                 reruns.append(fw_id)
 

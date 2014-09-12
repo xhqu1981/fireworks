@@ -279,6 +279,7 @@ class FireWork(FWSerializable):
         self.archived_launches = list(set(self.archived_launches))  # filter duplicates
         self.launches = []
         self.state = 'WAITING'
+        print ("entered fw rerun")
 
     def to_db_dict(self):
         m_dict = self.to_dict()
@@ -344,7 +345,9 @@ class LazyFirework(object):
         return self.full_fw.to_dict()
 
     def _rerun(self):
-        return self.full_fw._rerun()
+        self.full_fw._rerun()
+        print (self.state)
+        print (self.launches)
 
     def to_db_dict(self):
         return self.full_fw.to_db_dict()

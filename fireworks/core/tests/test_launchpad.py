@@ -339,6 +339,14 @@ class LaunchPadDefuseReigniteRerunArchiveDeleteTest(unittest.TestCase):
         rapidfire(self.lp, self.fworker,m_dir=MODULE_DIR)
 
         fw = self.lp.get_fw_by_id(self.zeus_fw_id)
+        #print (fw.__dict__.keys())
+        print (fw.launches)
+        #print (fw._state)
+        #print (fw.tasks)
+        #print (fw.created_on)
+        #print (fw.parents)
+        print (fw.archived_launches)
+        #print (fw.updated_on)
         fw_start_t =  fw.launches[0].time_start
         second_ldir = fw.launches[0].launch_dir
 
