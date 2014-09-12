@@ -4,16 +4,19 @@ Tests for 'lazy' firework classes.
 __author__ = 'Dan Gunter <dkgunter@lbl.gov>'
 
 import logging
+import os
 import unittest
 from fireworks.core import firework as FW
 
-_log = logging.getLogger(__name__)
+_log = logging.getLogger('fireworks.tests.test_lazyfw')
 _hnd = logging.StreamHandler()
 _hnd.setFormatter(logging.Formatter(
     "[%(levelname)s] %(asctime)s %(funcName)s:%(lineno)d - %(message)s"))
 _log.addHandler(_hnd)
-_log.setLevel(logging.DEBUG)
-_log.propagate = False
+if os.environ.get('TEST_DEBUG', None):
+    _log.setLevel(logging.DEBUG)
+else:
+    _log.setLevel(logging.ERROR)
 
 g_fw = {1: {
     "fw_id": 1,
@@ -126,14 +129,26 @@ class MockLaunchColl(MockColl):
 class MessageBoard(object):
     def __init__(self):
         self.messages = []
-        _log.info("MB init")
+        _log.debug("MB init")
 
     def post(self, caller, info):
-        _log.info("MB post {}: {}".format(caller, info))
+        _log.debug("MB post {}: {}".format(caller, info))
         self.messages.append(info)
+
+    def last(self):
+        return None if not self.messages else self.messages[-1]
 
     def __len__(self):
         return len(self.messages)
+
+
+class MyFireWork(FW.FireWork):
+    @classmethod
+    def from_dict(cls, d):
+        return MyFireWork([], spec={})
+
+    def hello(self, mb):
+        mb.post("MyFireWork", "hello")
 
 
 class MainTestCase(unittest.TestCase):
@@ -155,7 +170,29 @@ class MainTestCase(unittest.TestCase):
         m = self.mb.messages[0]
         self.assertEquals(m['spec']['fw_id'], fw1['fw_id'])
 
-    def test_lazylaunches_get(self):
+    def test_lazyfw_get_method(self):
+        fw = FW.LazyFirework(1, self.fw_coll, self.l_coll)
+        _ = fw._rerun
+        # causes instantiation, thus first query
+        self.assertEquals(len(self.mb), 1)
+        # when called, accesses launches & thus 2nd query
+        _ = fw._rerun()
+        self.assertEquals(len(self.mb), 2)
+        # no more queries
+        _ = fw._rerun()
+        self.assertEquals(len(self.mb), 2)
+
+    def test_lazyfw_set_attr(self):
+        fw_id = 1
+        fw1 = g_fw[fw_id]
+        fw = FW.LazyFirework(1, self.fw_coll, self.l_coll)
+        fw.state = 'RIDONCULOUS'
+        self.assertEquals(len(self.mb), 1)
+        # setting non-existent attr should NOT raise error
+        fw.porco_rosso = 1
+        self.assertEqual(fw.porco_rosso, 1)
+
+    def test_lazylaunches_get_attr(self):
         fw = FW.LazyFirework(1, self.fw_coll, self.l_coll)
         r1 = fw.launches
         # 2 queries
@@ -163,6 +200,24 @@ class MainTestCase(unittest.TestCase):
         r2 = fw.archived_launches
         # no more queries, since empty list
         self.assertEquals(len(self.mb), 2)
+
+    def test_lazylaunches_set_attr(self):
+        fw_id = 1
+        fw1 = g_fw[fw_id]
+        fw = FW.LazyFirework(1, self.fw_coll, self.l_coll)
+        fw.launches = [1, 2, 3]
+        self.assertEquals(len(self.mb), 2)
+        fw.launches = [1, 2, 3]
+        self.assertEquals(len(self.mb), 2)
+
+    def test_alt_class(self):
+        fw = FW.LazyFirework(1, self.fw_coll, self.l_coll, cls=MyFireWork)
+        self.assertEquals(len(self.mb), 0)
+        _ = fw.state
+        self.assertEquals(len(self.mb), 1)
+        _ = fw.hello(self.mb)
+        self.assertEquals(len(self.mb), 2)
+        self.assertEquals(self.mb.last(), "hello")
 
 if __name__ == '__main__':
     unittest.main()

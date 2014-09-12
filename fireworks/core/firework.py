@@ -17,6 +17,7 @@ import abc
 from datetime import datetime
 import os
 import pprint
+import types
 
 from monty.io import reverse_readline, zopen
 from monty.os.path import zpath
@@ -28,9 +29,9 @@ from fireworks.utilities.dict_mods import apply_mod
 from fireworks.utilities.fw_serializers import FWSerializable, \
     recursive_serialize, recursive_deserialize, serialize_fw
 from fireworks.utilities.fw_utilities import get_my_host, get_my_ip, \
-    NestedClassGetter, dict_move
+    NestedClassGetter, dict_extract
 from fireworks.utilities import timing
-from fireworks.utilities.lazy import Lazy, get_external_attrs
+from fireworks.utilities.lazy import Lazy, get_visible_attrs
 
 __author__ = "Anubhav Jain"
 __credits__ = "Shyue Ping Ong"
@@ -275,7 +276,7 @@ class FireWork(FWSerializable):
         after calling this method.
 
         """
-
+        print("@@ rerun: self={}".format(self))
         self.archived_launches.extend(self.launches)
         self.archived_launches = list(set(self.archived_launches))  # filter duplicates
         self.launches = []
@@ -338,7 +339,13 @@ class _LazyLaunches(Lazy):
         self._set('_ldata', launch_data)
         # Copy attrs, so that this instance will act as a FireWork
         for a in set(copy_attrs) - set(self.watch_attrs):
-            self._set(a, getattr(fw, a))
+            fw_attr = getattr(fw, a)
+            if isinstance(fw_attr, types.MethodType):
+                # rebind methods to this class
+                self.__dict__[a] = types.MethodType(fw_attr.im_func,
+                                                    self, self.__class__)
+            else:
+                self._set(a, fw_attr)
 
     def _instantiate(self, name):
         # Get launch ids from params
@@ -361,28 +368,29 @@ class LazyFirework(Lazy):
     overridden `__setattr__` method.
     """
 
-    # Instantiate from DB on access to these attributes
-    watch_attrs = get_external_attrs(FireWork([]))
-
     # Get these fields from DB when creating new FireWork object
     db_fields = ('name', 'fw_id', 'spec', 'created_on')
     # Get these fields, too, but don't pass to FireWork.from_dict
     hidden_db_fields = _LazyLaunches.watch_attrs
 
-    def __init__(self, fw_id, fw_coll, launch_coll):
+    def __init__(self, fw_id, fw_coll, launch_coll, cls=FireWork):
         Lazy.__init__(self)
+        # Instantiate from DB on access to these attributes
+        self.watch_attrs = get_visible_attrs(cls([]))
+
         self._set('fw_id', fw_id)
+
         self._set('_fwc', fw_coll)
         self._set('_lc', launch_coll)
+        self._set('_factory', cls.from_dict)
 
     def _instantiate(self, name):
         all_fields = list(self.db_fields) + list(self.hidden_db_fields)
         data = self._fwc.find_one({'fw_id': self.fw_id}, fields=all_fields)
-        # hide/save data from the hidden fields
-        hdata = {}
-        dict_move(data, hdata, self.hidden_db_fields)
+        # extract the hidden fields
+        hdata = dict_extract(data, self.hidden_db_fields)
         # build firework obj
-        fw = FireWork.from_dict(data)
+        fw = self._factory(data)
         # Second level of delayed instantiation
         return _LazyLaunches(fw, self.watch_attrs, self._fwc, self._lc, hdata)
 

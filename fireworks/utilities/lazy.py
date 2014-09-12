@@ -9,9 +9,9 @@ __date__ = "11 Sep 2014"
 import traceback # debug
 
 
-def get_external_attrs(obj):
+def get_visible_attrs(obj):
     """
-    Get all 'external' (read/write) attributes of an obj.
+    Get all 'visible' (read/write) attributes of an obj.
     This excludes attributes starting with a double-underscore
     or those all in upper-case.
 
@@ -65,14 +65,16 @@ class Lazy(object):
         if self._obj:
             setattr(self._obj, name, value)
             return
-        if name in self.watch_attrs:
+        if name in self.__dict__['__isset']:
+            # first check if attr exists (__setattr__ is called either way)
+            self.__dict__[name] = value
+        elif name in self.watch_attrs:
             obj = self._instantiate(name)
             if obj:
                 setattr(obj, name, value)
                 self._set('_obj', obj)
             else:
                 setattr(self, name, value)  # try again
-        elif name in self.__dict__['__isset']:
-            self.__dict__[name] = value
         else:
-            raise AttributeError(self.__class__.__name__ + ":" + name)
+            self.__dict__[name] = value
+            #raise AttributeError(self.__class__.__name__ + ":" + name)
