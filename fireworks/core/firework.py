@@ -823,9 +823,9 @@ class Workflow(FWSerializable):
 
         # get state of workflow
         m_state = 'READY'
-        states = [fw.state for fw in self.fws]
+        #states = [fw.state for fw in self.fws]
         # Bharat replaced the above line with below line
-        #states = self.fw_states
+        states = self.fw_states
         if all([s == 'COMPLETED' for s in states]):
             m_state = 'COMPLETED'
         elif all([s == 'ARCHIVED' for s in states]):
@@ -1028,10 +1028,10 @@ class Workflow(FWSerializable):
                     self.refresh(child_id, updated_ids))
 
         # Debug: Bharat
-        curframe = inspect.currentframe()
-        calframe = inspect.getouterframes(curframe, 2)
-        print ('inside refresh', 'caller name:', calframe[1][3])
-        print (self.links)
+        #curframe = inspect.currentframe()
+        #calframe = inspect.getouterframes(curframe, 2)
+        #print ('inside refresh', 'caller name:', calframe[1][3])
+        #print (self.links)
         # End Debug: Bharat
 
         self.updated_on = datetime.utcnow()

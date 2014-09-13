@@ -838,8 +838,7 @@ class LaunchPad(FWSerializable):
 
         m_fw.state = 'RUNNING'
         self._upsert_fws([m_fw])
-        self._refresh_wf(self.get_wf_by_fw_id_lzyfw(m_fw.fw_id),
-                         m_fw.fw_id)
+        #self._refresh_wf(self.get_wf_by_fw_id_lzyfw(m_fw.fw_id), m_fw.fw_id)
 
         # update any duplicated runs
         for fw in self.fireworks.find(
@@ -849,7 +848,7 @@ class LaunchPad(FWSerializable):
             fw = self.get_fw_by_id(fw_id)
             fw.state = 'RUNNING'
             self._upsert_fws([fw])
-            self._refresh_wf(self.get_wf_by_fw_id_lzyfw(m_fw.fw_id), m_fw.fw_id)
+            #self._refresh_wf(self.get_wf_by_fw_id_lzyfw(m_fw.fw_id), m_fw.fw_id)
 
         self.m_logger.debug('Checked out FW with id: {}'.format(m_fw.fw_id))
 
@@ -884,9 +883,7 @@ class LaunchPad(FWSerializable):
             print ('fw_id',fw_id)
             with WFLock(self, fw_id):
                 wf = self.get_wf_by_fw_id_lzyfw(fw_id)
-                print 'before',wf.links
                 self._refresh_wf(wf, fw_id)
-                print 'after',wf.links
                 #self._refresh_wf(self.get_wf_by_fw_id_lzyfw(fw_id), fw_id)
                 #self._refresh_wf(self.get_wf_by_fw_id(fw_id), fw_id)
         # change return type to dict to make return type seriazlizable to
