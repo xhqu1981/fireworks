@@ -678,7 +678,7 @@ class LaunchPad(FWSerializable):
         m_fw.launches.append(m_launch)
         m_fw.state = 'RESERVED'
         self._upsert_fws([m_fw])
-        self._refresh_wf(self.get_wf_by_fw_id_lzyfw(m_fw.fw_id), m_fw.fw_id)
+        #self._refresh_wf(self.get_wf_by_fw_id_lzyfw(m_fw.fw_id), m_fw.fw_id)
         self.m_logger.debug('Reserved FW with id: {}'.format(m_fw.fw_id))
 
         return m_fw, launch_id
