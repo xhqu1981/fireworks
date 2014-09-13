@@ -655,9 +655,9 @@ class LaunchPad(FWSerializable):
                 return None
 
             m_fw = self.get_fw_by_id(m_fw['fw_id'])
-            if checkout:
-                self._refresh_wf(self.get_wf_by_fw_id_lzyfw(m_fw.fw_id),
-                                 m_fw.fw_id)  # since we updated a state, we need to refresh the WF again
+            #if checkout:
+            #    self._refresh_wf(self.get_wf_by_fw_id_lzyfw(m_fw.fw_id),
+            #                     m_fw.fw_id)  # since we updated a state, we need to refresh the WF again
             if self._check_fw_for_uniqueness(m_fw):
                 m_timer.stop("_get_a_fw_to_run")
                 return m_fw
@@ -881,8 +881,13 @@ class LaunchPad(FWSerializable):
         m_timer.start("launchpad.complete_launch2", launch_id=launch_id)
         for fw in self.fireworks.find({'launches': launch_id}, {'fw_id': 1}):
             fw_id = fw['fw_id']
+            print ('fw_id',fw_id)
             with WFLock(self, fw_id):
-                self._refresh_wf(self.get_wf_by_fw_id_lzyfw(fw_id), fw_id)
+                wf = self.get_wf_by_fw_id_lzyfw(fw_id)
+                print 'before',wf.links
+                self._refresh_wf(wf, fw_id)
+                print 'after',wf.links
+                #self._refresh_wf(self.get_wf_by_fw_id_lzyfw(fw_id), fw_id)
                 #self._refresh_wf(self.get_wf_by_fw_id(fw_id), fw_id)
         # change return type to dict to make return type seriazlizable to
         # support job packing

@@ -17,6 +17,7 @@ import abc
 from datetime import datetime
 import os
 import pprint
+import inspect
 import types
 
 from monty.io import reverse_readline, zopen
@@ -822,9 +823,9 @@ class Workflow(FWSerializable):
 
         # get state of workflow
         m_state = 'READY'
-        #states = [fw.state for fw in self.fws]
+        states = [fw.state for fw in self.fws]
         # Bharat replaced the above line with below line
-        states = self.fw_states
+        #states = self.fw_states
         if all([s == 'COMPLETED' for s in states]):
             m_state = 'COMPLETED'
         elif all([s == 'ARCHIVED' for s in states]):
@@ -1026,8 +1027,14 @@ class Workflow(FWSerializable):
                 updated_ids = updated_ids.union(
                     self.refresh(child_id, updated_ids))
 
-        self.updated_on = datetime.utcnow()
+        # Debug: Bharat
+        curframe = inspect.currentframe()
+        calframe = inspect.getouterframes(curframe, 2)
+        print ('inside refresh', 'caller name:', calframe[1][3])
+        print (self.links)
+        # End Debug: Bharat
 
+        self.updated_on = datetime.utcnow()
         m_timer.stop("Workflow.refresh", fw_id=fw_id)
 
         return updated_ids
