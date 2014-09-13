@@ -880,7 +880,6 @@ class LaunchPad(FWSerializable):
         m_timer.start("launchpad.complete_launch2", launch_id=launch_id)
         for fw in self.fireworks.find({'launches': launch_id}, {'fw_id': 1}):
             fw_id = fw['fw_id']
-            print ('fw_id',fw_id)
             with WFLock(self, fw_id):
                 wf = self.get_wf_by_fw_id_lzyfw(fw_id)
                 self._refresh_wf(wf, fw_id)
@@ -946,7 +945,6 @@ class LaunchPad(FWSerializable):
             duplicates = list(set(duplicates))
         # rerun this FW
         m_fw = self.fireworks.find_one({"fw_id": fw_id}, {"state": 1})
-        print (m_fw['state'])
         if m_fw['state'] in ['ARCHIVED', 'DEFUSED'] :
             self.m_logger.info("Cannot rerun fw_id: {}: it is {}.".format(fw_id, m_fw['state']))
         elif m_fw['state'] == 'WAITING':
@@ -955,7 +953,6 @@ class LaunchPad(FWSerializable):
             with WFLock(self, fw_id):
                 wf = self.get_wf_by_fw_id_lzyfw(fw_id)
                 updated_ids = wf.rerun_fw(fw_id)
-                print ('updated_ids',updated_ids)
                 self._update_wf(wf, updated_ids)
                 reruns.append(fw_id)
 
@@ -984,7 +981,6 @@ class LaunchPad(FWSerializable):
 
     def _update_wf(self, wf, updated_ids):
         updated_fws = [wf.id_fw[fid] for fid in updated_ids]
-        #print ('updated_fws in _update_wf', updated_fws)
         old_new = self._upsert_fws(updated_fws)
         wf._reassign_ids(old_new)
 

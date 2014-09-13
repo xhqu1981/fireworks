@@ -17,7 +17,6 @@ import abc
 from datetime import datetime
 import os
 import pprint
-import inspect
 import types
 
 from monty.io import reverse_readline, zopen
@@ -280,7 +279,6 @@ class FireWork(FWSerializable):
         self.archived_launches = list(set(self.archived_launches))  # filter duplicates
         self.launches = []
         self.state = 'WAITING'
-        print ("entered fw rerun")
 
     def to_db_dict(self):
         m_dict = self.to_dict()
@@ -347,8 +345,6 @@ class LazyFirework(object):
 
     def _rerun(self):
         self.full_fw._rerun()
-        print (self.state)
-        print (self.launches)
 
     def to_db_dict(self):
         return self.full_fw.to_db_dict()
@@ -1026,13 +1022,6 @@ class Workflow(FWSerializable):
             for child_id in self.links[fw_id]:
                 updated_ids = updated_ids.union(
                     self.refresh(child_id, updated_ids))
-
-        # Debug: Bharat
-        #curframe = inspect.currentframe()
-        #calframe = inspect.getouterframes(curframe, 2)
-        #print ('inside refresh', 'caller name:', calframe[1][3])
-        #print (self.links)
-        # End Debug: Bharat
 
         self.updated_on = datetime.utcnow()
         m_timer.stop("Workflow.refresh", fw_id=fw_id)
