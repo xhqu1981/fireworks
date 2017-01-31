@@ -44,6 +44,7 @@ def ping_multilaunch(port, stop_event):
                     lp.ping_launch(lid)
                 except OSError:
                     fd.Running_IDs[pid] = None
+                    fd.FiringState[pid] = False
                     pass  # means this process is dead!
 
         stop_event.wait(PING_TIME_SECS)
