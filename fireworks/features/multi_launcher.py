@@ -51,7 +51,7 @@ def ping_multilaunch(port, stop_event):
 
 
 def rapidfire_process(fworker, nlaunches, sleep, loglvl, port, node_list, sub_nproc, timeout,
-                      running_ids_dict):
+                      running_ids_dict, firing_state_dict):
     """
     Initializes shared data with multiprocessing parameters and starts a rapidfire.
 
@@ -75,6 +75,7 @@ def rapidfire_process(fworker, nlaunches, sleep, loglvl, port, node_list, sub_np
     fw_data.NODE_LIST = node_list
     fw_data.SUB_NPROCS = sub_nproc
     fw_data.Running_IDs = running_ids_dict
+    fw_data.FiringState = firing_state_dict
     sleep_time = sleep if sleep else RAPIDFIRE_SLEEP_SECS
     l_dir = launchpad.get_logdir() if launchpad else None
     l_logger = get_fw_logger('rocket.launcher', l_dir=l_dir, stream_level=loglvl)
@@ -100,7 +101,7 @@ def rapidfire_process(fworker, nlaunches, sleep, loglvl, port, node_list, sub_np
 
 
 def start_rockets(fworker, nlaunches, sleep, loglvl, port, node_lists, sub_nproc_list, timeout=None,
-                  running_ids_dict=None):
+                  running_ids_dict=None, firing_state_dict=None):
     """
     Create each sub job and start a rocket launch in each one
 
@@ -120,7 +121,7 @@ def start_rockets(fworker, nlaunches, sleep, loglvl, port, node_lists, sub_nproc
     """
     processes = [Process(target=rapidfire_process,
                          args=(fworker, nlaunches, sleep, loglvl, port, nl, sub_nproc, timeout,
-                               running_ids_dict))
+                               running_ids_dict, firing_state_dict))
                  for nl, sub_nproc in zip(node_lists, sub_nproc_list)]
     for p in processes:
         p.start()
@@ -190,11 +191,14 @@ def launch_multiprocess(launchpad, fworker, loglvl, nlaunches, num_jobs, sleep_t
 
     manager = Manager()
     running_ids_dict = manager.dict()
+    firing_state_dict = manager.dict()
 
     # launch rapidfire processes
     processes = start_rockets(fworker, nlaunches, sleep_time, loglvl, port, node_lists,
-                              sub_nproc_list, timeout=timeout, running_ids_dict=running_ids_dict)
+                              sub_nproc_list, timeout=timeout, running_ids_dict=running_ids_dict,
+                              firing_state_dict=firing_state_dict)
     FWData().Running_IDs = running_ids_dict
+    FWData().FiringState = firing_state_dict
 
     # start pinging service
     ping_stop = threading.Event()
