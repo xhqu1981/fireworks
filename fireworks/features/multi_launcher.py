@@ -51,7 +51,7 @@ def ping_multilaunch(port, stop_event):
 
 
 def rapidfire_process(fworker, nlaunches, sleep, loglvl, port, node_list, sub_nproc, timeout,
-                      running_ids_dict, firing_state_dict):
+                      running_ids_dict, firing_state_dict, macro_sleep_time=None):
     """
     Initializes shared data with multiprocessing parameters and starts a rapidfire.
 
@@ -65,6 +65,7 @@ def rapidfire_process(fworker, nlaunches, sleep, loglvl, port, node_list, sub_np
         node_list ([str]): computer node list
         sub_nproc (int): number of processors of the sub job
         timeout (int): # of seconds after which to stop the rapidfire process
+        macro_sleep_time (int): secs to sleep between sub job resubmit
     """
     ds = DataServer(address=('127.0.0.1', port), authkey=DS_PASSWORD)
     ds.connect()
@@ -88,9 +89,11 @@ def rapidfire_process(fworker, nlaunches, sleep, loglvl, port, node_list, sub_np
         firing_pids = [pid for pid, is_firing in fw_data.FiringState.items() if is_firing]
         if len(firing_pids) > 0:
             # Some other sub jobs are still running
-            log_multi(l_logger, 'Sleeping for {} secs before resubmit sub job'.format(sleep_time))
-            time.sleep(sleep_time)
-            log_multi(l_logger, 'Resubmit sub job'.format(sleep_time))
+            macro_sleep_time = macro_sleep_time if macro_sleep_time \
+                else sleep_time * len(fw_data.FiringState)
+            log_multi(l_logger, 'Sleeping for {} secs before resubmit sub job'.format(macro_sleep_time))
+            time.sleep(macro_sleep_time)
+            log_multi(l_logger, 'Resubmit sub job'.format(macro_sleep_time))
             fw_data.FiringState[os.getpid()] = True
             rapidfire(launchpad, fworker=fworker, m_dir=None, nlaunches=nlaunches,
                       max_loops=-1, sleep_time=sleep, strm_lvl=loglvl, timeout=timeout)
