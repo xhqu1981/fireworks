@@ -68,21 +68,19 @@ def rapidfire_process(fworker, nlaunches, sleep, loglvl, port, node_list, sub_np
     ds = DataServer(address=('127.0.0.1', port), authkey=DS_PASSWORD)
     ds.connect()
     launchpad = ds.LaunchPad()
-    fw_data = FWData()
-    fw_data.DATASERVER = ds
-    fw_data.MULTIPROCESSING = True
-    fw_data.NODE_LIST = node_list
-    fw_data.SUB_NPROCS = sub_nproc
-    fw_data.Running_IDs = running_ids_dict
+    FWData().DATASERVER = ds
+    FWData().MULTIPROCESSING = True
+    FWData().NODE_LIST = node_list
+    FWData().SUB_NPROCS = sub_nproc
+    FWData().Running_IDs = running_ids_dict
     sleep_time = sleep if sleep else RAPIDFIRE_SLEEP_SECS
     l_dir = launchpad.get_logdir() if launchpad else None
     l_logger = get_fw_logger('rocket.launcher', l_dir=l_dir, stream_level=loglvl)
     rapidfire(launchpad, fworker=fworker, m_dir=None, nlaunches=nlaunches,
               max_loops=-1, sleep_time=sleep, strm_lvl=loglvl, timeout=timeout)
     while nlaunches == 0:
-        time.sleep(1.5)  # wait for LaunchPad to be initialized
-        fw_data.Running_IDs[os.getpid()] = None  # Current process is not running any Rocket at the current time
-        launch_ids = fw_data.Running_IDs.values()
+        time.sleep(1.5) # wait for LaunchPad to be initialized
+        launch_ids = FWData().Running_IDs.values()
         live_ids = list(set(launch_ids) - {None})
         if len(live_ids) > 0:
             # Some other sub jobs are still running
@@ -191,9 +189,6 @@ def launch_multiprocess(launchpad, fworker, loglvl, nlaunches, num_jobs, sleep_t
     # launch rapidfire processes
     processes = start_rockets(fworker, nlaunches, sleep_time, loglvl, port, node_lists,
                               sub_nproc_list, timeout=timeout, running_ids_dict=running_ids_dict)
-    for (i, p) in enumerate(processes):
-        # a negative launch id means the process has never launch any Rocket
-        running_ids_dict[p.pid] = -1
     FWData().Running_IDs = running_ids_dict
 
     # start pinging service
