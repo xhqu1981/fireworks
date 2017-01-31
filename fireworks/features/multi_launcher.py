@@ -68,27 +68,31 @@ def rapidfire_process(fworker, nlaunches, sleep, loglvl, port, node_list, sub_np
     ds = DataServer(address=('127.0.0.1', port), authkey=DS_PASSWORD)
     ds.connect()
     launchpad = ds.LaunchPad()
-    FWData().DATASERVER = ds
-    FWData().MULTIPROCESSING = True
-    FWData().NODE_LIST = node_list
-    FWData().SUB_NPROCS = sub_nproc
-    FWData().Running_IDs = running_ids_dict
+    fw_data = FWData()
+    fw_data.DATASERVER = ds
+    fw_data.MULTIPROCESSING = True
+    fw_data.NODE_LIST = node_list
+    fw_data.SUB_NPROCS = sub_nproc
+    fw_data.Running_IDs = running_ids_dict
     sleep_time = sleep if sleep else RAPIDFIRE_SLEEP_SECS
     l_dir = launchpad.get_logdir() if launchpad else None
     l_logger = get_fw_logger('rocket.launcher', l_dir=l_dir, stream_level=loglvl)
+    fw_data.FiringState[os.getpid()] = True
     rapidfire(launchpad, fworker=fworker, m_dir=None, nlaunches=nlaunches,
               max_loops=-1, sleep_time=sleep, strm_lvl=loglvl, timeout=timeout)
+    fw_data.FiringState[os.getpid()] = False
     while nlaunches == 0:
         time.sleep(1.5) # wait for LaunchPad to be initialized
-        launch_ids = FWData().Running_IDs.values()
-        live_ids = list(set(launch_ids) - {None})
-        if len(live_ids) > 0:
+        firing_pids = [pid for pid, is_firing in fw_data.FiringState.items() if is_firing]
+        if len(firing_pids) > 0:
             # Some other sub jobs are still running
             log_multi(l_logger, 'Sleeping for {} secs before resubmit sub job'.format(sleep_time))
             time.sleep(sleep_time)
             log_multi(l_logger, 'Resubmit sub job'.format(sleep_time))
+            fw_data.FiringState[os.getpid()] = True
             rapidfire(launchpad, fworker=fworker, m_dir=None, nlaunches=nlaunches,
                       max_loops=-1, sleep_time=sleep, strm_lvl=loglvl, timeout=timeout)
+            fw_data.FiringState[os.getpid()] = False
         else:
             break
     log_multi(l_logger, 'Sub job finished')
