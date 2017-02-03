@@ -188,3 +188,4 @@ class FWData(object):
         self.DATASERVER = None  # the shared object manager
         self.Running_IDs = None  # a dict of (pid, launch_id)
         self.FiringState = None  # a dict of (pid, isFiring)
+        self.lp = None # LaunchPad

@@ -77,6 +77,7 @@ def rapidfire_process(fworker, nlaunches, sleep, loglvl, port, node_list, sub_np
     fw_data.SUB_NPROCS = sub_nproc
     fw_data.Running_IDs = running_ids_dict
     fw_data.FiringState = firing_state_dict
+    fw_data.lp = launchpad
     sleep_time = sleep if sleep else RAPIDFIRE_SLEEP_SECS
     l_dir = launchpad.get_logdir() if launchpad else None
     l_logger = get_fw_logger('rocket.launcher', l_dir=l_dir, stream_level=loglvl)
