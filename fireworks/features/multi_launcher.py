@@ -85,7 +85,7 @@ def rapidfire_process(fworker, nlaunches, sleep, loglvl, port, node_list, sub_np
     fw_data.FiringState[os.getpid()] = True
     rapidfire(launchpad, fworker=fworker, m_dir=None, nlaunches=nlaunches,
               max_loops=-1, sleep_time=sleep, strm_lvl=loglvl, timeout=timeout,
-              local_redirect=local_redirect,)
+              local_redirect=local_redirect)
     fw_data.FiringState[os.getpid()] = False
     while nlaunches == 0:
         time.sleep(1.5) # wait for LaunchPad to be initialized
@@ -100,7 +100,7 @@ def rapidfire_process(fworker, nlaunches, sleep, loglvl, port, node_list, sub_np
             fw_data.FiringState[os.getpid()] = True
             rapidfire(launchpad, fworker=fworker, m_dir=None, nlaunches=nlaunches,
                       max_loops=-1, sleep_time=sleep, strm_lvl=loglvl, timeout=timeout,
-                      local_redirect=local_redirect))
+                      local_redirect=local_redirect)
             fw_data.FiringState[os.getpid()] = False
         else:
             break
