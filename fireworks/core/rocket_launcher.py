@@ -10,7 +10,7 @@ import os
 import time
 from datetime import datetime
 
-from fireworks.fw_config import RAPIDFIRE_SLEEP_SECS, FWORKER_LOC
+from fireworks.fw_config import RAPIDFIRE_SLEEP_SECS, FWORKER_LOC, FWData
 from fireworks.core.fworker import FWorker
 from fireworks.core.rocket import Rocket
 from fireworks.utilities.fw_utilities import get_fw_logger, create_datestamp_dir, log_multi, redirect_local
@@ -115,7 +115,13 @@ def rapidfire(launchpad, fworker=None, m_dir=None, nlaunches=0, max_loops=-1, sl
         if num_launched == nlaunches or nlaunches == 0:
             break
         log_multi(l_logger, 'Sleeping for {} secs'.format(sleep_time))
+        fd = FWData()
+        if fd.MULTIPROCESSING:
+            # sleeping time is not firing
+            fd.FiringState = False
         time.sleep(sleep_time)
+        if fd.MULTIPROCESSING:
+            fd.FiringState = True
         num_loops += 1
         log_multi(l_logger, 'Checking for FWs to run...'.format(sleep_time))
     os.chdir(curdir)
