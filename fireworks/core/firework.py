@@ -2,6 +2,8 @@
 
 from __future__ import unicode_literals
 
+from copy import deepcopy
+
 from monty.dev import deprecated
 
 """
@@ -47,7 +49,7 @@ class FiretaskMeta(abc.ABCMeta):
         o = abc.ABCMeta.__call__(cls, *args, **kwargs)
         for k in cls.required_params:
             if k not in o:
-                raise ValueError("Required parameter {} not specified!".format(k))
+                raise ValueError("{}: Required parameter {} not specified!".format(cls, k))
         return o
 
 
@@ -202,8 +204,6 @@ class Firework(FWSerializable):
 
         self.tasks = tasks
         self.spec = spec.copy() if spec else {}
-        # put tasks in a special location of the spec
-        self.spec['_tasks'] = [t.to_dict() for t in tasks]
 
         self.name = name or 'Unnamed FW'  # do it this way to prevent None
         # names
@@ -245,7 +245,10 @@ class Firework(FWSerializable):
 
     @recursive_serialize
     def to_dict(self):
-        m_dict = {'spec': self.spec, 'fw_id': self.fw_id, 'created_on': self.created_on,
+        # put tasks in a special location of the spec
+        spec = self.spec
+        spec['_tasks'] = [t.to_dict() for t in self.tasks]
+        m_dict = {'spec': spec, 'fw_id': self.fw_id, 'created_on': self.created_on,
                   'updated_on': self.updated_on}
 
         # only serialize these fields if non-empty
@@ -707,6 +710,9 @@ class Workflow(FWSerializable):
         # of nodes from id_fw
         if set(self.links.nodes) != set(map(int, self.id_fw.keys())):
             raise ValueError("Specified links don't match given FW")
+
+        if len(self.links.nodes) == 0:
+            raise ValueError("Workflow cannot be empty (must contain at least 1 FW)")
 
         self.metadata = metadata if metadata else {}
         self.created_on = created_on or datetime.utcnow()
@@ -1201,6 +1207,47 @@ class Workflow(FWSerializable):
 
     def __str__(self):
         return 'Workflow object: (fw_ids: {} , name: {})'.format(self.id_fw.keys(), self.name)
+
+    def remove_fws(self, fw_ids):
+        """
+        Remove the fireworks corresponding to the input firework ids and update the workflow i.e the
+        parents of the removed fireworks become the parents of the children fireworks (only if the
+        children dont have any other parents).
+
+        Args:
+            fw_ids (list): list of fw ids to remove.
+
+        """
+        # not working with the copies, causes spurious behavior
+        wf_dict = deepcopy(self.as_dict())
+        orig_parent_links = deepcopy(self.links.parent_links)
+        fws = wf_dict["fws"]
+
+        # update the links dict: remove fw_ids and link their parents to their children (if they don't
+        # have any other parents).
+        for fid in fw_ids:
+            children = wf_dict["links"].pop(str(fid))
+            # root node --> no parents
+            try:
+                parents = orig_parent_links[int(fid)]
+            except KeyError:
+                parents = []
+            # remove the firework from their parent links and re-link their parents to the children.
+            for p in parents:
+                wf_dict["links"][str(p)].remove(fid)
+                # adopt the children
+                for c in children:
+                    # adopt only if the child doesn't have any other parents.
+                    if len(orig_parent_links[int(c)]) == 1:
+                        wf_dict["links"][str(p)].append(c)
+
+        # update the list of fireworks.
+        wf_dict["fws"] = [f for f in fws if f["fw_id"] not in fw_ids]
+
+        new_wf = Workflow.from_dict(wf_dict)
+        self.fw_states = new_wf.fw_states
+        self.id_fw = new_wf.id_fw
+        self.links = new_wf.links
 
 
 # old spelling
